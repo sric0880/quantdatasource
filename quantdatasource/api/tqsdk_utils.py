@@ -1,6 +1,8 @@
 import json
+import logging
 import os
 import zipfile
+from functools import cache
 from pathlib import Path
 
 import numpy as np
@@ -194,3 +196,40 @@ def zip_file(filename, zipfilename):
     zip = zipfile.ZipFile(zipfilename, "w", zipfile.ZIP_DEFLATED)
     zip.write(filename)
     zip.close()
+
+
+@cache
+def _get_stock_basic_df(output):
+    from .tushare import TushareApi
+
+    basic_stock_path = Path(output).parent.joinpath(TushareApi.dir, "stock_basic.csv")
+    if not basic_stock_path.exists():
+        logging.error(
+            f"{basic_stock_path}不存在，必须先调用 TushareApi.full_download_stock_basic"
+        )
+        return None
+    df = pd.read_csv(basic_stock_path, index_col=0)
+    return df
+
+
+def stock_is_on_list(symbol, year, month, output):
+    # 是否是上市期间
+    i = symbol.index(".")
+    ex = symbol[:i]
+    ex = "SH" if ex == "SSE" else "SZ"
+    code = symbol[i + 1 :] + "." + ex
+    df = _get_stock_basic_df(output)
+    if df is None:
+        return False
+    code_df = df.loc[df["ts_code"] == code]
+    if code_df.empty:
+        logging.error(f"{symbol} 不在stock_basic列表里，查不到上市和退市时间")
+        return False
+    data = code_df.iloc[0]
+    ipoyear, ipomonth = data["list_date"].year, data["list_date"].month
+    if year < ipoyear or (year == ipoyear and month < ipomonth):
+        return False
+    outyear, outmonth = data["delist_date"].year, data["delist_date"].month
+    if year > outyear or (year == outyear and month > outmonth):
+        return False
+    return True

@@ -2,6 +2,7 @@ import datetime
 import logging
 from logging.handlers import TimedRotatingFileHandler
 
+import tabulate
 from apscheduler.schedulers.background import BlockingScheduler
 
 from quantdatasource.scheduler import all_jobs
@@ -46,10 +47,17 @@ def main(
     else:
         logging.basicConfig(level=loglevel, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
-    # dt = datetime.datetime.fromisoformat(args.dt) if args.dt else None
     if show:
-        for job in all_jobs:
-            print(job)
+        keys = ["id", "name", "trigger", "day_of_week", "hour", "minute", "second"]
+        print(
+            tabulate.tabulate(
+                [
+                    list(getattr(job, k, job.job_params.get(k, "-")) for k in keys)
+                    for job in all_jobs
+                ],
+                headers=keys,
+            )
+        )
     elif job_id:
         for job in all_jobs:
             if job.id == job_id:

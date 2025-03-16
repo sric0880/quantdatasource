@@ -7,15 +7,17 @@ from time import sleep, time
 
 import pandas as pd
 import tushare as ts
-from quantcalendar import CalendarAstock, pydt_from_second
+from quantcalendar import CalendarAstock, pydt_from_second, pydt_from_sec_list
 
 from .utils import log
 
 
 class TushareApi:
+    dir = "tushare"
+
     def __init__(self, token, output, trade_date) -> None:
         self.api = ts.pro_api(token)
-        self.output = output
+        self.output = os.path.join(output, self.dir)
         self.dt = trade_date
         trade_date = trade_date.strftime("%Y%m%d")
         self.trade_date = trade_date
@@ -135,8 +137,12 @@ class TushareApi:
         """
         全量下载所有财务报表
         """
-        stock_basic_path = os.path.join(self.output, f"stock_basic.csv")
-        df = pd.read_csv(stock_basic_path, index_col=0)
+        if not self.basic_stock_path.exists():
+            logging.error(
+                f"{self.basic_stock_path}不存在，必须先调用 full_download_stock_basic"
+            )
+            return
+        df = pd.read_csv(self.basic_stock_path, index_col=0)
         for row in df.itertuples():
             symbol = row.ts_code
             path = Path(self.finance_income_path, f"{symbol}.csv")
@@ -238,16 +244,14 @@ class TushareApi:
     @log
     def full_download_lhb(self):
         """全量下载龙虎榜数据(接口限流每分钟500次)"""
-        trade_df = pd.read_csv(
-            os.path.join(self.output, f"trade_cal.csv"), dtype={"cal_date": "str"}
-        )
-        trade_df = trade_df[(trade_df["is_open"] == 1)]
-        for row in trade_df.itertuples():
-            tradeday = row.cal_date
+        cal = CalendarAstock()
+        for row in pydt_from_sec_list(cal.get_tradedays_gte()):
+            tradeday = row.strftime("%Y%m%d")
             t = time()
             do_download = False
             # 龙虎榜数据从2005年开始
             f = os.path.join(self.output, "lhb", f"{tradeday}.csv")
+            self.lhb_addition_path
             if not os.path.exists(f):
                 df = self.api.top_list(trade_date=tradeday)
                 df.to_csv(f, index=False)

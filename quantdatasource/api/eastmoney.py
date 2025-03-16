@@ -5,6 +5,7 @@
 
 import asyncio
 import logging
+import os
 import time
 import warnings
 from pathlib import Path
@@ -22,8 +23,10 @@ simplefilter(action="ignore", category=FutureWarning)
 
 
 class EastMoneyApi:
+    dir = "eastmoney"
+
     def __init__(self, output, trade_date):
-        self.output = output
+        self.output = os.path.join(output, self.dir)
         self.dt = trade_date
         trade_date = trade_date.strftime("%Y-%m-%d")
         self.trade_date = trade_date

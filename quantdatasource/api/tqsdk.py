@@ -15,8 +15,10 @@ from .utils import log
 
 
 class TQSDKApi:
+    dir = "tqsdk"
+
     def __init__(self, username, psw, output, trade_date):
-        self.output = output
+        self.output = os.path.join(output, self.dir)
         self.dt = trade_date
         trade_date = trade_date.strftime("%Y-%m-%d")
         self.trade_date = trade_date
@@ -27,6 +29,7 @@ class TQSDKApi:
         self.product_basic_path = Path(output, "product_basic.csv")
         self.cont_history_path = Path(output, "cont_history.csv")
         self.cont_list_path = Path(output, "cont_list.json")
+        self.stock_list_path = Path(output, f"stock_list.json")
         self.bars_current_path = Path(output, "klines", "current")
         self.bars_history_path = Path(output, "klines", "history")
         self.adjust_factors_path = Path(output, "adjust_factors")
@@ -113,6 +116,25 @@ class TQSDKApi:
         contlist = self.api.query_quotes(ins_class="CONT")
         with open(self.cont_list_path, "w") as f:
             json.dump(contlist, f)
+
+    @log
+    def full_download_stock_list(self):
+        """全量下载股票列表"""
+        stocklist = self.api.query_quotes(ins_class="STOCK")
+        # 排除B股
+        stocklist = [
+            symbol
+            for symbol in stocklist
+            if (
+                not symbol.startswith("SSE.900")
+                and not symbol.startswith("SZSE.200")
+                and not symbol.startswith("SZSE.201")
+            )
+        ]
+        # print(stocklist)
+        logging.info(f"  一共{len(stocklist)}只股票")
+        with open(self.stock_list_path, "w") as f:
+            json.dump(stocklist, f, indent=4)
 
     @log
     def download_bars(
@@ -253,7 +275,9 @@ class TQSDKApi:
         df.to_csv(self.adjust_factors_filepath, index=True)
 
     @log
-    def download_ticks(self, symbols_or_file, start_month, end_month, zip):
+    def full_download_ticks(
+        self, symbols_or_file, start_month, end_month, zip, symbol_type="future"
+    ):
         from tqsdk.tools import DataDownloader
 
         if not symbols_or_file:
@@ -278,6 +302,10 @@ class TQSDKApi:
             download_files = []
             for _yearmonth in all_tick_months:
                 year, month = _yearmonth.year, _yearmonth.month
+                if symbol_type == "astock" and not stock_is_on_list(
+                    symbol, year, month, self.output
+                ):
+                    continue
                 _year, _month = next_month(year, month)
                 task_name = f"{symbol}_{year}_{month:02d}"
                 output_filename = f"{task_name}.csv"

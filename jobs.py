@@ -3,18 +3,15 @@ from contextlib import closing
 import fire
 from quantcalendar import CalendarAstock
 
+from account import *
 from quantdatasource import main
 from quantdatasource.api.eastmoney import EastMoneyApi
 from quantdatasource.api.tqsdk import TQSDKApi
 from quantdatasource.api.tushare import TushareApi
 from quantdatasource.scheduler import job
 
-from account import *
-
-astock_tushare_output = "datasource/AStock/tushare"
-astock_eastmoney_output = "datasource/AStock/eastmoney"
-future_tqsdk_output = "datasource/CTPFuture/tqsdk"
-future_tushare_output = "datasource/CTPFuture/tushare"
+astock_output = "datasource/AStock"
+future_output = "datasource/CTPFuture"
 
 
 # 每周6晚上更新
@@ -31,7 +28,7 @@ future_tushare_output = "datasource/CTPFuture/tushare"
     misfire_grace_time=200,
 )
 def tushare_cb_data(dt, is_tradeday):
-    api = TushareApi(tushare_token, astock_tushare_output, dt)
+    api = TushareApi(tushare_token, astock_output, dt)
     api.full_download_cb_share_data(include_delist_cbs=False, replace=True)
     api.full_download_cb_call_data(include_delist_cbs=False, replace=True)
 
@@ -54,7 +51,7 @@ def tushare_cb_data(dt, is_tradeday):
 def tushare_index_bars(dt, is_tradeday):
     if not is_tradeday:
         return
-    api = TushareApi(tushare_token, astock_tushare_output, dt)
+    api = TushareApi(tushare_token, astock_output, dt)
     api.addition_download_index(
         [
             ("000016.SH", "2004-01-01"),
@@ -84,7 +81,7 @@ def tushare_index_bars(dt, is_tradeday):
 def tushare_cb_daily(dt, is_tradeday):
     if not is_tradeday:
         return
-    api = TushareApi(tushare_token, astock_tushare_output, dt)
+    api = TushareApi(tushare_token, astock_output, dt)
     api.addition_download_cb_daily()
 
 
@@ -110,7 +107,7 @@ def tushare_cb_daily(dt, is_tradeday):
     misfire_grace_time=200,
 )
 def tushare_misc_data(dt, is_tradeday):
-    api = TushareApi(tushare_token, astock_tushare_output, dt)
+    api = TushareApi(tushare_token, astock_output, dt)
     api.addition_download_finance_data()
     if not is_tradeday:
         return
@@ -130,7 +127,6 @@ def tushare_misc_data(dt, is_tradeday):
 @job(
     import_mod="import_db.AStock",
     import_funcs=["eastmoney.analyst_reports.addition_import_analyst_reports"],
-    calendar=CalendarAstock(),
     trigger="cron",
     id="astock_eastmoney_reports",
     name="[EastMoneyApi]更新研报",
@@ -141,7 +137,7 @@ def tushare_misc_data(dt, is_tradeday):
     misfire_grace_time=1,
 )
 def eastmoney_analyst_reports(dt, is_tradeday):
-    api = EastMoneyApi(astock_eastmoney_output, dt)
+    api = EastMoneyApi(astock_output, dt)
     api.addition_download_analyst_reports()
 
 
@@ -159,7 +155,7 @@ def eastmoney_analyst_reports(dt, is_tradeday):
 def tqsdk_future_basic(dt, is_tradeday):
     if not is_tradeday:
         return
-    api = TQSDKApi(tq_username, tq_psw, future_tqsdk_output, dt)
+    api = TQSDKApi(tq_username, tq_psw, future_output, dt)
     with closing(api):
         api.full_download_future_basic()
 
@@ -167,13 +163,13 @@ def tqsdk_future_basic(dt, is_tradeday):
 @job(
     import_mod="",
     import_funcs=[],
-    id="future_tqsdk_future_basic",
+    id="future_tqsdk_future_bars",
     name="[TQSDKApi|TushareApi]更新期货K线数据",
 )
 def tqsdk_download_future_bars(dt, is_tradeday):
-    api = TushareApi(tushare_token, future_tushare_output, dt)
+    api = TushareApi(tushare_token, future_output, dt)
     api.full_download_all_future_bars()
-    api = TQSDKApi(tq_username, tq_psw, future_tqsdk_output, dt)
+    api = TQSDKApi(tq_username, tq_psw, future_output, dt)
     with closing(api):
         api.full_download_bars()
 
@@ -181,11 +177,11 @@ def tqsdk_download_future_bars(dt, is_tradeday):
 @job(
     import_mod="",
     import_funcs=[],
-    id="future_tqsdk_future_basic",
+    id="future_tqsdk_calc_adj_factors",
     name="[TQSDKApi]更新期货价差数据(未完全实现)",
 )
 def tqsdk_calc_adj_factors(dt, is_tradeday):
-    api = TQSDKApi(tq_username, tq_psw, future_tqsdk_output, dt)
+    api = TQSDKApi(tq_username, tq_psw, future_output, dt)
     with closing(api):
         api.full_download_future_cont_list()
         api.full_download_future_cont_history()
