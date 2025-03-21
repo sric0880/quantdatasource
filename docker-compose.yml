@@ -1,0 +1,50 @@
+version: "3.7"
+
+services:
+  # tdengine:
+  #   restart: always
+  #   image: tdengine/tdengine:3.0.3.0
+  #   environment:
+  #     TAOS_FQDN: tdengine
+  #   volumes:
+  #     - ./datas/tdengine:/var/lib/taos/
+  #     - ./etc/tdengine:/etc/taos/
+  #   ports:
+  #     - 6030:6030
+  #     - 6041:6041
+  #     - 6043-6049:6043-6049
+  #     - 6043-6049:6043-6049/udp
+
+  # grafana:
+  #   image: grafana/grafana-oss:9.4.3
+  #   volumes:
+  #     - ./tdengine.yml/:/etc/grafana/provisioning/tdengine.yml
+  #     - ./datas/grafana:/var/lib/grafana
+  #   environment:
+  #     # install tdengine plugin at start
+  #     GF_INSTALL_PLUGINS: "tdengine-datasource"
+  #     TDENGINE_URL: "http://tdengine:6041"
+  #     #printf "$TDENGINE_USER:$TDENGINE_PASSWORD" | base64
+  #     TDENGINE_BASIC_AUTH: "cm9vdDp0YmFzZTEyNQ=="
+  #   ports:
+  #     - 3000:3000
+
+  mongo:
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    ports:
+      - 27017:27017
+    volumes:
+      - ./datas/mongo:/data/db
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: admin
+      ME_CONFIG_MONGODB_URL: mongodb://root:admin@mongo:27017/

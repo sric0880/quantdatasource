@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+from tqsdk import TqApi, TqAuth
+from tqsdk.tools import DataDownloader
 
 from quantdatasource.api.tqsdk_utils import *
 
@@ -15,26 +17,28 @@ from .utils import log
 
 
 class TQSDKApi:
-    dir = "tqsdk"
-
     def __init__(self, username, psw, output, trade_date):
-        self.output = os.path.join(output, self.dir)
+        self.output = Path(output, "tqsdk")
         self.dt = trade_date
         trade_date = trade_date.strftime("%Y-%m-%d")
         self.trade_date = trade_date
-        from tqsdk import TqApi, TqAuth
 
         self.api = TqApi(auth=TqAuth(username, psw))
-        self.future_basic_path = Path(output, "future_basic.csv")
-        self.product_basic_path = Path(output, "product_basic.csv")
-        self.cont_history_path = Path(output, "cont_history.csv")
-        self.cont_list_path = Path(output, "cont_list.json")
-        self.stock_list_path = Path(output, f"stock_list.json")
-        self.bars_current_path = Path(output, "klines", "current")
-        self.bars_history_path = Path(output, "klines", "history")
-        self.adjust_factors_path = Path(output, "adjust_factors")
-        self.adjust_factors_filepath = Path(output, "adjust_factors.csv")
-        self.ticks_path = Path(output, "ticks")
+        self.future_basic_path = Path(self.output, "future_basic.csv")
+        self.product_basic_path = Path(self.output, "product_basic.csv")
+        self.cont_history_path = Path(self.output, "cont_history.csv")
+        self.cont_list_path = Path(self.output, "cont_list.json")
+        self.stock_list_path = Path(self.output, f"stock_list.json")
+        self.bars_current_path = Path(self.output, "klines", "current")
+        self.bars_history_path = Path(self.output, "klines", "history")
+        self.adjust_factors_path = Path(self.output, "adjust_factors")
+        self.adjust_factors_filepath = Path(self.output, "adjust_factors.csv")
+        self.ticks_path = Path(self.output, "ticks")
+
+        self.bars_current_path.mkdir(parents=True, exist_ok=True)
+        self.bars_history_path.mkdir(parents=True, exist_ok=True)
+        self.adjust_factors_path.mkdir(parents=True, exist_ok=True)
+        self.ticks_path.mkdir(parents=True, exist_ok=True)
 
     def close(self):
         self.api.close()
@@ -278,8 +282,6 @@ class TQSDKApi:
     def full_download_ticks(
         self, symbols_or_file, start_month, end_month, zip, symbol_type="future"
     ):
-        from tqsdk.tools import DataDownloader
-
         if not symbols_or_file:
             return
         if isinstance(symbols_or_file, str):

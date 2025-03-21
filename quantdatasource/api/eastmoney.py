@@ -5,7 +5,6 @@
 
 import asyncio
 import logging
-import os
 import time
 import warnings
 from pathlib import Path
@@ -23,16 +22,16 @@ simplefilter(action="ignore", category=FutureWarning)
 
 
 class EastMoneyApi:
-    dir = "eastmoney"
-
     def __init__(self, output, trade_date):
-        self.output = os.path.join(output, self.dir)
         self.dt = trade_date
         trade_date = trade_date.strftime("%Y-%m-%d")
         self.trade_date = trade_date
+        self.output = Path(output, "eastmoney")
         self.analyst_reports_addition_path = Path(
-            output, f"analyst_reports_{trade_date}.csv"
+            self.output, f"analyst_reports_{trade_date}.csv"
         )
+
+        self.output.mkdir(exist_ok=True)
 
     async def _download_analyst_reports(self, date_start, date_end):
         # 获取单页研报数据

@@ -1,0 +1,62 @@
+from quantdatasource.api.tushare import TushareApi
+from quantdatasource.jobs.account import *
+from quantdatasource.jobs.calendar import get_astock_calendar
+from quantdatasource.jobs.scheduler import job
+
+__all__ = ["tushare_index_bars"]
+
+
+@job(
+    trigger="cron",
+    id="astock_tushare_index",
+    name="[TushareApi]大盘指数日/周/月线",
+    replace_existing=True,
+    hour=23,
+    minute=58,
+    misfire_grace_time=200,
+)
+def tushare_index_bars(dt, is_collect, is_import):
+    calendar = get_astock_calendar()
+    if not calendar.is_trading_day(dt):
+        return
+    api = TushareApi(tushare_token, astock_output, dt)
+
+    index_codes = [
+        ("000016.SH", "2004-01-01"),
+        ("000300.SH", "2005-01-01"),
+        ("000905.SH", "2007-01-01"),
+        ("000852.SH", "2005-01-01"),
+        ("399303.SZ", "2014-03-01"),
+        ("000001.SH", "1991-01-01"),
+        ("399001.SZ", "1991-04-01"),
+        ("399006.SZ", "2010-06-01"),
+    ]
+    if is_collect:
+        api.addition_download_index(index_codes)
+
+    if is_import:
+        from quantdatasource.dbimport import tdengine
+        from quantdatasource.dbimport.tushare import index
+
+        tdengine.insert_multi_tables(
+            index.addition_read_index(dt, api.index_daily_addition_path, "1D"), "bars"
+        )
+        tdengine.insert_multi_tables(
+            index.addition_read_index(dt, api.index_week_addition_path, "w"), "bars"
+        )
+        tdengine.insert_multi_tables(
+            index.addition_read_index(dt, api.index_month_addition_path, "mon"), "bars"
+        )
+        # TODO:
+        # for data, period, is_k_min, n in dpjk.calc_dpjk_data(
+        #     CalendarAstock(),
+        #     [code for code, _ in index_codes],
+        #     ["1d", "w", "mon"],
+        #     [3, 6],
+        #     ["min", "max"],
+        # ):
+        #     tbnames = []
+        #     tdengine.drop_tables(tbnames, "dpjk")
+        #     tdengine.create_child_tables(tbnames, "dpjk", tags_lst=tags_lst)
+        #     tbnames.append(tdengine.get_tbname(f"{period}_{is_k_min}_{n}", stable="dpjk"))
+        #     tdengine.insert(data, f"{period}_{is_k_min}_{n}", stable="dpjk")

@@ -7,26 +7,24 @@ from time import sleep, time
 
 import pandas as pd
 import tushare as ts
-from quantcalendar import CalendarAstock, pydt_from_second, pydt_from_sec_list
+from quantcalendar import CalendarAstock, pydt_from_sec_list, pydt_from_second
 
 from .utils import log
 
 
 class TushareApi:
-    dir = "tushare"
-
     def __init__(self, token, output, trade_date) -> None:
         self.api = ts.pro_api(token)
-        self.output = os.path.join(output, self.dir)
+        self.output = Path(output, "tushare")
         self.dt = trade_date
         trade_date = trade_date.strftime("%Y%m%d")
         self.trade_date = trade_date
-        self.basic_stock_path = Path(output, "stock_basic.csv")
-        self.basic_cb_path = Path(output, "cb_basic.csv")
-        self.ths_index_a_concepts_path = Path(output, "ths_index_a_concepts.csv")
-        self.finance_income_path = Path(output, "income")
-        self.finance_balancesheet_path = Path(output, "balancesheet")
-        self.finance_cashflow_path = Path(output, "cashflow")
+        self.basic_stock_path = Path(self.output, "stock_basic.csv")
+        self.basic_cb_path = Path(self.output, "cb_basic.csv")
+        self.ths_index_a_concepts_path = Path(self.output, "ths_index_a_concepts.csv")
+        self.finance_income_path = Path(self.output, "income")
+        self.finance_balancesheet_path = Path(self.output, "balancesheet")
+        self.finance_cashflow_path = Path(self.output, "cashflow")
         self.finance_income_addition_path = Path(self.finance_income_path, "additions")
         self.finance_balancesheet_addition_path = Path(
             self.finance_balancesheet_path, "additions"
@@ -34,41 +32,56 @@ class TushareApi:
         self.finance_cashflow_addition_path = Path(
             self.finance_cashflow_path, "additions"
         )
-        self.ths_daily_bars_path = Path(output, "ths_concepts")
+        self.ths_daily_bars_path = Path(self.output, "ths_concepts")
         self.ths_daily_bars_addition_path = Path(
-            output, "ths_concepts", "additions", f"{trade_date}.csv"
+            self.output, "ths_concepts", "additions", f"{trade_date}.csv"
         )
-        self.ths_concepts_members_path = Path(output, "ths_concepts_members")
-        self.daily_bars_addition_path = Path(output, "daily", f"{trade_date}.csv")
+        self.ths_concepts_members_path = Path(self.output, "ths_concepts_members")
+        self.daily_bars_addition_path = Path(self.output, "daily", f"{trade_date}.csv")
         self.daily_basic_addition_path = Path(
-            output, "daily_basic", f"{trade_date}.csv"
+            self.output, "daily_basic", f"{trade_date}.csv"
         )
-        self.moneyflow_addition_path = Path(output, "moneyflow", f"{trade_date}.csv")
-        self.lhb_addition_path = Path(output, "lhb", f"{trade_date}.csv")
-        self.lhb_inst_addition_path = Path(output, "lhb_inst", f"{trade_date}.csv")
-        self.cb_daily_bars_path = Path(output, "cb", "daily")
+        self.moneyflow_addition_path = Path(
+            self.output, "moneyflow", f"{trade_date}.csv"
+        )
+        self.lhb_addition_path = Path(self.output, "lhb", f"{trade_date}.csv")
+        self.lhb_inst_addition_path = Path(self.output, "lhb_inst", f"{trade_date}.csv")
+        self.cb_daily_bars_path = Path(self.output, "cb", "daily")
         self.cb_daily_bars_addition_path = Path(
             self.cb_daily_bars_path, "additions", f"{trade_date}.csv"
         )
-        self.cb_share_path = Path(output, "cb", "share")
-        self.cb_call_path = Path(output, "cb", "call")
+        self.cb_share_path = Path(self.output, "cb", "share")
+        self.cb_call_path = Path(self.output, "cb", "call")
         self.index_daily_addition_path = Path(
-            output, "index", "daily", f"{trade_date}.csv"
+            self.output, "index", "daily", f"{trade_date}.csv"
         )
         self.index_week_addition_path = Path(
-            output, "index", "week", f"{trade_date}.csv"
+            self.output, "index", "week", f"{trade_date}.csv"
         )
         self.index_month_addition_path = Path(
-            output, "index", "month", f"{trade_date}.csv"
+            self.output, "index", "month", f"{trade_date}.csv"
         )
-        self.future_daily_current_path = Path(output, "daily", "current")
-        self.future_daily_history_path = Path(output, "daily", "history")
+
+        self.daily_basic_addition_path.parent.mkdir(parents=True, exist_ok=True)
+        self.moneyflow_addition_path.parent.mkdir(parents=True, exist_ok=True)
+        self.finance_balancesheet_addition_path.mkdir(parents=True, exist_ok=True)
+        self.finance_cashflow_addition_path.mkdir(parents=True, exist_ok=True)
+        self.finance_income_addition_path.mkdir(parents=True, exist_ok=True)
+        self.ths_daily_bars_addition_path.parent.mkdir(parents=True, exist_ok=True)
+        self.ths_concepts_members_path.mkdir(parents=True, exist_ok=True)
+        self.cb_daily_bars_addition_path.parent.mkdir(parents=True, exist_ok=True)
+        self.cb_share_path.mkdir(parents=True, exist_ok=True)
+        self.cb_call_path.mkdir(parents=True, exist_ok=True)
+        self.index_daily_addition_path.parent.mkdir(parents=True, exist_ok=True)
+        self.index_week_addition_path.parent.mkdir(parents=True, exist_ok=True)
+        self.index_month_addition_path.parent.mkdir(parents=True, exist_ok=True)
+        self.daily_bars_addition_path.parent.mkdir(parents=True, exist_ok=True)
+        self.lhb_addition_path.parent.mkdir(parents=True, exist_ok=True)
+        self.lhb_inst_addition_path.parent.mkdir(parents=True, exist_ok=True)
 
     @log
     def full_download_stock_basic(self):
-        """
-        全量下载证券基本信息
-        """
+        """全量下载证券基本信息"""
         dfs = [
             self.api.stock_basic(
                 list_status="L",
@@ -116,17 +129,13 @@ class TushareApi:
 
     @log
     def full_download_cb_basic(self):
-        """
-        全量下载可转债基本信息
-        """
+        """全量下载可转债基本信息"""
         df = self.api.cb_basic()
         df.to_csv(self.basic_cb_path)
 
     @log
     def full_download_ths_index(self):
-        """
-        全量下载同花顺概念板块列表
-        """
+        """全量下载同花顺概念板块列表"""
         df = self.api.ths_index(
             exchange="A", type="N", fields="ts_code,name,count,list_date"
         )
@@ -134,9 +143,7 @@ class TushareApi:
 
     @log
     def full_download_finance_data(self, force_replace=False):
-        """
-        全量下载所有财务报表
-        """
+        """全量下载所有财务报表"""
         if not self.basic_stock_path.exists():
             logging.error(
                 f"{self.basic_stock_path}不存在，必须先调用 full_download_stock_basic"
@@ -185,9 +192,7 @@ class TushareApi:
 
     @log
     def full_download_concepts_bars(self, force_replace=False):
-        """
-        全量下载同花顺概念板块日线数据(每分钟最多访问500次)
-        """
+        """全量下载同花顺概念板块日线数据(每分钟最多访问500次)"""
         if not self.ths_index_a_concepts_path.exists():
             logging.error(
                 f"{self.ths_index_a_concepts_path}不存在，必须先调用 full_download_ths_index"
@@ -419,7 +424,7 @@ class TushareApi:
         )
         is_last_weekday = next_tradeday.isocalendar()[1] != self.dt.isocalendar()[1]
         is_last_monthday = next_tradeday.month != self.dt.month
-        logging.debug(
+        logging.info(
             f"  下一交易日 {next_tradeday}, is_last_weekday: {is_last_weekday}, is_last_monthday: {is_last_monthday}"
         )
         index_daily_dfs = []
@@ -456,6 +461,21 @@ class TushareApi:
         if index_month_dfs:
             index_month_df = pd.concat(index_month_dfs)
             index_month_df.to_csv(Path(self.index_month_addition_path))
+
+
+class TushareFutureApi:
+    def __init__(self, token, output, trade_date) -> None:
+        self.api = ts.pro_api(token)
+        self.output = os.path.join(output, "tushare")
+        self.dt = trade_date
+        trade_date = trade_date.strftime("%Y%m%d")
+        self.trade_date = trade_date
+
+        self.future_daily_current_path = Path(output, "future_daily", "current")
+        self.future_daily_history_path = Path(output, "future_daily", "history")
+
+        self.future_daily_current_path.mkdir(parents=True, exist_ok=True)
+        self.future_daily_history_path.mkdir(parents=True, exist_ok=True)
 
     @log
     def full_download_all_future_bars(self):
