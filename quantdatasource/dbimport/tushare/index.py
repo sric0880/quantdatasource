@@ -7,7 +7,7 @@ import pandas as pd
 def addition_read_index(filepath, periodname):
     if not filepath.exists():
         logging.info(f"读取大盘指数 没有 {filepath}")
-        return
+        return None
     df: pd.DataFrame = pd.read_csv(filepath, index_col=0)
     df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
     df = df.reset_index(drop=True)

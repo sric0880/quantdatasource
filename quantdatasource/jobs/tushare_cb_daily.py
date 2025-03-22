@@ -33,4 +33,5 @@ def tushare_cb_daily(dt, is_collect, is_import):
             ),
             "bars_cb_daily",
             whole_df=False,
+            reorder_cols=False,
         )

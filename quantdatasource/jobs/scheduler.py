@@ -1,8 +1,11 @@
 import json
 import logging
+import traceback
 from datetime import datetime
 
 from quantdata import open_dbs
+
+from quantdatasource.jobs.msg_email import close_email_api, init_email_api, send_email
 
 
 class AdditionCollectAndImport:
@@ -20,8 +23,14 @@ class AdditionCollectAndImport:
             with open_dbs():
                 self.func(dt, is_collect, is_import)
         except Exception as e:
-            # TODO: send email
             logging.error("", exc_info=e)
+            init_email_api()
+            send_email(
+                ["532978024@qq.com"],
+                title="数据采集入库报错",
+                message=traceback.format_exc(),
+            )
+            close_email_api()
 
     def __call__(self, sched=None, only_collect=False, only_import=False, dt=None):
         kwargs = {}

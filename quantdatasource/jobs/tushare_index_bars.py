@@ -38,15 +38,16 @@ def tushare_index_bars(dt, is_collect, is_import):
         from quantdatasource.dbimport import tdengine
         from quantdatasource.dbimport.tushare import index
 
-        tdengine.insert_multi_tables(
-            index.addition_read_index(dt, api.index_daily_addition_path, "1D"), "bars"
-        )
-        tdengine.insert_multi_tables(
-            index.addition_read_index(dt, api.index_week_addition_path, "w"), "bars"
-        )
-        tdengine.insert_multi_tables(
-            index.addition_read_index(dt, api.index_month_addition_path, "mon"), "bars"
-        )
+        daily = index.addition_read_index(api.index_daily_addition_path, "1D")
+        weekly = index.addition_read_index(api.index_week_addition_path, "w")
+        monthly = index.addition_read_index(api.index_month_addition_path, "mon")
+        if daily is not None:
+            tdengine.insert_multi_tables(daily, "bars")
+        if weekly is not None:
+            tdengine.insert_multi_tables(weekly, "bars")
+        if monthly is not None:
+            tdengine.insert_multi_tables(monthly, "bars")
+
         # TODO:
         # for data, period, is_k_min, n in dpjk.calc_dpjk_data(
         #     CalendarAstock(),

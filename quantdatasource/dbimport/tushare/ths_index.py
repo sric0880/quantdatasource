@@ -52,13 +52,20 @@ def addition_read_ths_concepts_constituent(
     addition_rows = []
     for members_csv in ths_concepts_members_path.iterdir():
         symbol = members_csv.name.replace(".csv", "")
-        ths_idx_df = all_ths_index_df.loc[all_ths_index_df["index_code"] == symbol]
-        stocks = _get_current_constituent_of_index(ths_idx_df)
+        if not all_ths_index_df.empty:
+            ths_idx_df = all_ths_index_df.loc[all_ths_index_df["index_code"] == symbol]
+            stocks = _get_current_constituent_of_index(ths_idx_df)
+        else:
+            stocks = set()
         members_df = pd.read_csv(members_csv, index_col=0)
         if members_df.empty:
             logging.warning(f"无法增量导入概念成分股：{members_csv} 为空")
             continue
-        latest_members = set(members_df["code"].to_list())
+        # 从20250120开始字段名有变更
+        members_df.rename(
+            columns={"code": "con_code", "name": "con_name"}, inplace=True
+        )
+        latest_members = set(members_df["con_code"].to_list())
         add_symbols = latest_members - stocks
         del_symbols = stocks - latest_members
         for _stock in add_symbols:
@@ -128,5 +135,5 @@ def addition_read_concepts_bars(csv, concepts_basic_df):
     df = df.astype({"volume": "int64"})
     # tags_lst = list(zip(df['ts_code'], periodname))
     df = df.drop(columns=["pre_close"])
-    df = df.loc[df["tablename"].isin(concepts_basic_df["ts_code"])]
+    df = df.loc[df["tablename"].isin(concepts_basic_df["symbol"])]
     return df

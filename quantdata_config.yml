@@ -1,0 +1,18 @@
+# duckdb:
+#   uris:
+#     - "//DESKTOP-6NI30V4/bt_data/duckdb/finance.db"
+#     - "//DESKTOP-6NI30V4/bt_data/duckdb/finance_ticks_ctpfuture.db"
+
+mongodb:
+  host: "192.168.2.9"
+  port: 27017
+  user: "root"
+  password: "admin"
+
+tdengine:
+  host: "192.168.2.40"
+  port: 6030
+  user: "root"
+  password: "taosdata"
+  dbname: "finance"
+  timezone: "UTC"

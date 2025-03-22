@@ -275,15 +275,15 @@ def insert(df: pd.DataFrame, tablename, stable=None, whole_df=True, types=None):
     logging.info(f"写入TDengine[{tablename}][{stable}]")
 
 
-def insert_multi_tables(df, stable, whole_df=True):
+def insert_multi_tables(df, stable, whole_df=True, reorder_cols=True):
     if df.empty:
         return
     if "tablename" not in df:
         return
-    df = df[["tablename"] + list(table_types[stable].keys())]
-    conn = get_conn_tdengine()
-    df["tablename"] = df["tablename"].map(partial(get_tbname, stable=stable))
     types = table_types[stable]
+    if reorder_cols:
+        df = df[["tablename"] + list(types.keys())]
+    df["tablename"] = df["tablename"].map(partial(get_tbname, stable=stable))
     col_names = list(df.columns)
     col_names.remove("tablename")
     values_len = len(col_names)
@@ -291,6 +291,7 @@ def insert_multi_tables(df, stable, whole_df=True):
     _cols = ""
     if not whole_df:
         _cols = f'({",".join(col_names)})'
+    conn = get_conn_tdengine()
     stmt = conn.statement(f"INSERT INTO ? {_cols} VALUES({_values})")
     tb_name = None
     for row in df.itertuples():

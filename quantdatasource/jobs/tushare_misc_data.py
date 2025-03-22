@@ -190,8 +190,8 @@ def tushare_misc_data(dt, is_collect, is_import):
         )
         tdengine.create_child_tables(bars_tablenames, "bars", bars_tags)
 
-        concepts_basic_df = (
-            ths_index.read_ths_concepts_basic(api.ths_index_a_concepts_path),
+        concepts_basic_df = ths_index.read_ths_concepts_basic(
+            api.ths_index_a_concepts_path
         )
         mongodb.insert_many(
             concepts_basic_df,
@@ -200,11 +200,15 @@ def tushare_misc_data(dt, is_collect, is_import):
         )
         conn = mongodb.get_conn_mongodb()
         all_ths_index_df = pd.DataFrame(conn["finance"]["constituent_ths_index"].find())
-        conn["finance"]["constituent_ths_index"].insert_many(
-            ths_index.addition_read_ths_concepts_constituent(
-                dt, all_ths_index_df, api.ths_concepts_members_path
-            )
+        addition_constituent_rows = ths_index.addition_read_ths_concepts_constituent(
+            dt, all_ths_index_df, api.ths_concepts_members_path
         )
+        if addition_constituent_rows:
+            conn["finance"]["constituent_ths_index"].insert_many(
+                addition_constituent_rows
+            )
+        else:
+            logging.info("同花顺概念股成分没有增量改变")
 
         bars_tablenames = []
         bars_tags = []
