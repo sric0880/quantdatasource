@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantdatasource"
+version = "1.0.0"
+authors = [
+    {name = "lzq", email = 'justgotpaid88@qq.com'}
+]
+description = 'finance datasource downloader and importer'
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.26.4", "pymongo", "pyyaml", "apscheduler", "pandas", "tushare", "duckdb", "quantcalendar", "quantdata"]
+
+[project.optional-dependencies]
+more = ["taos", "baostock"]
+
+[tool.setuptools]
+packages = ["quantdata", "quantdata.analysis", "quantdata.databases"]
+
+[tool.setuptools.package-dir]
+quantdatasource= "quantdatasource"

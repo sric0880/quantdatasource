@@ -1,7 +1,0 @@
-apscheduler
-pandas
-taospy
-pymongo
-tushare
-baostock
-duckdb
