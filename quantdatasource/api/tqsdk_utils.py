@@ -133,14 +133,14 @@ def get_close_price_diff(symbol, pre_symbol, dt):
     try:
         ds = get_data(
             symbol,
-            stable="bars_ctpfuture_daily",
+            stable="bars_daily",
             fields=["dt", "close"],
             till_dt=dt,
             use_df=False,
         )
         pre_ds = get_data(
             pre_symbol,
-            stable="bars_ctpfuture_daily",
+            stable="bars_daily",
             fields=["dt", "close"],
             till_dt=dt,
             use_df=False,

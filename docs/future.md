@@ -101,9 +101,9 @@ ticks数据TDengine需要单独建库，时区：Asia/Shanghai
 |amount|成交额(元)|long long int|
 |open_interest|持仓量(手)|int|
 
-### 2. bars_ctpfuture_daily 期货日线(周线)详细数据
+### 2. bars_daily 期货日线(周线)详细数据
 
-* 超级表：`bars_ctpfuture_daily`
+* 超级表：`bars_daily`
 * 子表名: `{symbol}`
 * TAGS: `(symbol, exchange)`
 

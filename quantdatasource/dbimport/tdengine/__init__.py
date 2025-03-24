@@ -27,7 +27,7 @@ table_types = {
         "amount": "bigint unsigned",
         "open_interest": "int unsigned",
     },
-    "bars_ctpfuture_daily": {
+    "bars_daily": {
         "dt": "timestamp",
         "open": "float",
         "high": "float",

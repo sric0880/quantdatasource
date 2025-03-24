@@ -56,23 +56,23 @@ def tqsdk_future_bars(dt, is_collect, is_import):
         for df, week_df, symbol, is_history in future_daily.read_daily_and_weekly(
             tushare_api.future_daily_history_path, tushare_api.future_daily_current_path
         ):
-            tbname = tdengine.get_tbname(symbol, stable="bars_ctpfuture_daily")
-            existed_tables = tdengine.get_existed_tables("bars_ctpfuture_daily")
+            tbname = tdengine.get_tbname(symbol, stable="bars_daily")
+            existed_tables = tdengine.get_existed_tables("bars_daily")
             if is_history and tbname in existed_tables:
                 # chech table exists. don't import if it has imported.
                 logging.info(f"{symbol} daily already exists.")
                 continue
 
-            tdengine.drop_tables([symbol + "_" + "w"], "bars_ctpfuture_daily")
+            tdengine.drop_tables([symbol + "_" + "w"], "bars_daily")
             tdengine.create_child_tables(
                 [
                     tbname,
                     tdengine.get_tbname(
-                        symbol + "_" + "w", stable="bars_ctpfuture_daily"
+                        symbol + "_" + "w", stable="bars_daily"
                     ),
                 ],
-                "bars_ctpfuture_daily",
+                "bars_daily",
                 [(symbol, exchange), (symbol, exchange)],
             )
-            tdengine.insert(df, symbol, stable="bars_ctpfuture_daily")
-            tdengine.insert(week_df, symbol + "_" + "w", stable="bars_ctpfuture_daily")
+            tdengine.insert(df, symbol, stable="bars_daily")
+            tdengine.insert(week_df, symbol + "_" + "w", stable="bars_daily")
