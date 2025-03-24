@@ -47,17 +47,3 @@ def tushare_index_bars(dt, is_collect, is_import):
             tdengine.insert_multi_tables(weekly, "bars")
         if monthly is not None:
             tdengine.insert_multi_tables(monthly, "bars")
-
-        # TODO:
-        # for data, period, is_k_min, n in dpjk.calc_dpjk_data(
-        #     CalendarAstock(),
-        #     [code for code, _ in index_codes],
-        #     ["1d", "w", "mon"],
-        #     [3, 6],
-        #     ["min", "max"],
-        # ):
-        #     tbnames = []
-        #     tdengine.drop_tables(tbnames, "dpjk")
-        #     tdengine.create_child_tables(tbnames, "dpjk", tags_lst=tags_lst)
-        #     tbnames.append(tdengine.get_tbname(f"{period}_{is_k_min}_{n}", stable="dpjk"))
-        #     tdengine.insert(data, f"{period}_{is_k_min}_{n}", stable="dpjk")

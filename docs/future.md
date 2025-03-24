@@ -1,15 +1,8 @@
-# 国内期货字段表说明
+# 国内期货(finance_ctpfuture)字段表说明
 
-时区：UTC
+## MongoDB
 
-## 期货日历 - MongoDB->finance_ctpfuture->trade_cal
-
-|字段名|说明|类型|
-|--|--|--|
-|_id|日期|datetime|
-|trading|交易状态|int 1-交易日 2-周末 3-节假日|
-
-## 主力合约价差调价因子 MongoDB->finance_ctpfuture->adjust_factors
+### 1. adjust_factors 主力合约价差调价因子
 
 因为tick数据来源于多个历史主力合约，tqsdk没有做任何拼接，为防止回测时价差太大，从tqsdk整理的价差因子。
 
@@ -19,7 +12,7 @@
 |tradedate|交易日期|
 |adjust_factor|价差因子|
 
-## 期货合约列表详细数据 - MongoDB->finance_ctpfuture->basic_info_futures
+### 2. basic_info_futures 期货合约列表详细数据
 
 |字段名|说明|类型|
 |--|--|--|
@@ -38,7 +31,18 @@
 |pre_open_interest|昨持仓|int|
 |pre_close|昨收盘|float|
 
-## 期货合约保证金率以及手续费数据（分多个表，对应不同券商）- MongoDB->finance_ctpfuture->contracts_${brokerid}
+### 3. basic_info_products 期货品种列表数据
+
+|字段名|说明|类型|
+|--|--|--|
+|_id|品种代码|string|
+|exchange|交易所代码|string|
+|name|中文名称|string|
+|cont_symbols|持仓量最大的3个合约|list of strings|
+
+### 4. contracts_${brokerid} 期货合约保证金率以及手续费数据
+
+分多个表，brokerid对应不同券商
 
 |brokerid|券商|
 |--|--|
@@ -76,16 +80,11 @@
 |closetoday_comm|平今手续费|float|
 |symbol_name|中文名|string|
 
-## 期货品种列表数据 - MongoDB->finance_ctpfuture->basic_info_products
+## TDengine/DuckDB
 
-|字段名|说明|类型|
-|--|--|--|
-|_id|品种代码|string|
-|exchange|交易所代码|string|
-|name|中文名称|string|
-|cont_symbols|持仓量最大的3个合约|list of strings|
+ticks数据TDengine需要单独建库，时区：Asia/Shanghai
 
-## 期货K线数据（分钟线、日线、周线、月线） TDengine -> finance_ctpfuture-> bars
+### 1. bars 期货K线数据（分钟线、日线、周线、月线） 
 
 * 超级表：`bars`
 * 子表名: `{symbol}_{period}`
@@ -102,7 +101,7 @@
 |amount|成交额(元)|long long int|
 |open_interest|持仓量(手)|int|
 
-## 期货日线(周线)详细数据 TDengine -> finance_ctpfuture-> bars_ctpfuture_daily
+### 2. bars_ctpfuture_daily 期货日线(周线)详细数据
 
 * 超级表：`bars_ctpfuture_daily`
 * 子表名: `{symbol}`
@@ -119,3 +118,40 @@
 |volume|成交量(手)|int|
 |amount|成交金额(元)|long long int|
 |open_interest|持仓量(手)|int|
+
+### 3. ticks ticks数据
+
+* 超级表：`ticks`
+* 子表名: `{symbol}`
+* TAGS: `(symbol, exchange)`
+
+|字段名|说明|类型|
+|--|--|--|
+|dt|时间戳|datetime|
+|last_price|最新价|float|
+|volume|成交量|int|
+|amount|成交额|int|
+|open_interest|持仓量|int|
+|bid_price1|买1价|float|
+|ask_price1|卖1价|float|
+|bid_volume1|买1量|int|
+|ask_volume1|卖1量|int|
+
+### 4. tick_bars K线数据
+
+由ticks数据生成，方便ticks的读取和回放
+
+* 超级表：`tick_bars`
+* 子表名: `{symbol}_{period}`
+* TAGS: `(symbol, period, exchange)`
+
+|字段名|说明|
+|--|--|
+|dt|K线时间（按收盘）|datetime|
+|open|开盘价|float|
+|high|最高价|float|
+|low|最低价|float|
+|close|收盘价|float|
+|volume|成交量|int|
+|amount|成交额|long long int|
+|open_interest|持仓量|int|

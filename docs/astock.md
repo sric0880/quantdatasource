@@ -1,15 +1,8 @@
-# A股数据库字段表说明
+# A股数据库(finance_astock)字段表说明
 
-时区：UTC
+## MongoDB
 
-## 交易日历 - MongoDB->finance->trade_cal
-
-|字段名|说明|类型|
-|--|--|--|
-|_id|日期|datetime|
-|is_open|是否交易|bool|
-
-## 证券基本信息 - MongoDB->finance->basic_info_stocks
+### 1. basic_info_stocks 证券基本信息
 
 |字段名|说明|类型|
 |--|--|--|
@@ -28,7 +21,7 @@
 |status|上市状态，其中L上市 D退市 P暂停上市|string|
 |is_hs|是否沪深港通标的，N否 H沪股通 S深股通|string|
 
-## 同花顺概念板块基本信息 -- MongoDB->finance->basic_info_ths_concepts
+### 2. basic_info_ths_concepts 同花顺概念板块基本信息
 
 |字段名|说明|类型|
 |--|--|--|
@@ -37,11 +30,11 @@
 |count|成分个数|int|
 |list_date|上市日期|string|
 
-## 可转债基本信息 -- MongoDB -> finance-> basic_info_cbs
+### 3. basic_info_cbs 可转债基本信息
 
 数据表字段说明见：[TusharePro](https://tushare.pro/document/2?doc_id=185)
 
-## 成分股数据
+### 4. 成分股数据
 
 |字段名|说明|类型|
 |--|--|--|
@@ -50,19 +43,19 @@
 |op|操作：纳入:1,剔除:0|int|
 |index_code|指数代码|string|
 
-### 8大指数 -- `MongoDB->finance->constituent_index`
+#### 4.1 constituent_index 8大指数
 
 数据来源Wind，更新截止：2022-11-21
 
-### 同花顺概念成分股 -- `MongoDB->finance->constituent_ths_index`
+#### 4.2 constituent_ths_index 同花顺概念成分股
 
 数据来源tushare，无历史数据，数据起始于2023-03-31
 
-### 申万行业L3历史成分股 -- `MongoDB->finance->constituent_sw_industry_l3`
+#### 4.3 constituent_sw_industry_l3 申万行业L3历史成分股
 
 数据来源[申万官网](https://www.swsresearch.com/institute_sw/allIndex/downloadCenter/industryType)：[StockClassifyUse_stock.xls](https://www.swsresearch.com/swindex/pdf/SwClass2021/StockClassifyUse_stock.xls)
 
-## 复权因子 MongoDB->finance->adjust_factors
+### 5. adjust_factors 复权因子
 
 |字段名|说明|
 |--|--|
@@ -70,7 +63,7 @@
 |tradedate|交易日期|
 |adjust_factor|复权因子(前复权)|
 
-## A股研报数据(来源：东方财富网) MongoDB->finance->analyst_reports
+### 6. analyst_reports A股研报数据(来源：东方财富网)
 
 |字段名|说明|类型|
 |--|--|--|
@@ -108,17 +101,9 @@
 |sRatingCode|投资评级代码|int|
 |count|近一月个股研报数|int|
 
-## A股研报数据(来源：tushare) MongoDB->finance->analyst_reports_tushare
+### 7. hot_stocks_ths 同花顺热股数据
 
-数据表字段说明见：[TusharePro](https://tushare.pro/document/2?doc_id=292)
-
-额外字段：
-
-|字段名|说明|类型|
-|--|--|--|
-|tradingDate|最近交易日|datetime|
-
-## 同花顺热股数据 MongoDB->finance->hot_stocks_ths
+已暂停更新
 
 数据说明：1h热度排行榜前100数据，每天15点15分更新
 
@@ -133,7 +118,63 @@
 |concept_tag|热点概念|
 |popularity_tag|人气概念|
 
-## A股日线详细数据 TDengine -> finance-> bars_stock_daily
+### 8. 财务三大报表数据
+
+1. 资产负债表 `finance->finance_balancesheet`
+2. 利润表 `finance->finance_income`
+3. 利润表当季 `finance->finance_income_q`
+4. 现金流量表 `finance->finance_cashflow`
+5. 现金流量表当季 `finance->finance_cashflow_q`
+
+数据表字段说明见：[TusharePro](https://tushare.pro/document/2?doc_id=16)
+
+### 9. lhb 龙虎榜数据
+
+|字段名|说明|类型|
+|--|--|--|
+|trade_date|交易日期|int (index) (%Y%m%d)|
+|symbol|代码|string (index)|
+|name|名称|string|
+|close|收盘价|float|
+|pct_change|涨跌幅|float|
+|turnover_rate|换手率|float|
+|amount|总成交额|float|
+|l_sell|龙虎榜卖出额|float|
+|l_buy|龙虎榜买入额|float|
+|l_amount|龙虎榜成交额|float|
+|net_amount|龙虎榜净买入额|float|
+|net_rate|龙虎榜净买额占比|float|
+|amount_rate|龙虎榜成交额占比|float|
+|float_values|当日流通市值|float|
+|reason|上榜理由|string or list of strings|
+|buy_top5_inst|买入金额最大前5名|`[{'exalter':'营业部名称','buy_amount':'买入额（元）','buy_rate':'买入占总成交比例','sell_amount':'卖出额（元）','sell_rate':'卖出占总成交比例','net_buy':'净成交额（元）'},...]`|
+|sell_top5_inst|卖出金额最大前5名|`[{'exalter':'营业部名称','buy_amount':'买入额（元）','buy_rate':'买入占总成交比例','sell_amount':'卖出额（元）','sell_rate':'卖出占总成交比例','net_buy':'净成交额（元）'},...]`|
+
+
+### 10. basic_info_sw_industry 申万行业(1L,2L,3L)基本信息
+
+|字段名|说明|类型|
+|--|--|--|
+|l1_name|一级行业|string|
+|l2_name|二级行业|string|
+|l3_name|三级行业|string|
+|industry_code|行业代码|string|
+|index_code|指数代码|string|
+|version|申万行业标准版本(SW2011：2011年版本，SW2014：2014年版本，SW2021：2021年版本)|string|
+
+### 11. cyq_chips 筹码分布
+
+|字段名|说明|类型|
+|--|--|--|
+|dt|日期|datetime|
+|symbol|标的|string|
+|data|筹码分布|sorted list([(price, percentage), ....])|
+
+## TDengine/DuckDB
+
+ticks数据TDengine需要单独建库，时区：Asia/Shanghai
+
+### 1. bars_stock_daily A股日线详细数据
 
 * 超级表：`bars_stock_daily`
 * 子表名: `{symbol}`
@@ -190,7 +231,7 @@
 |high_|最高价(前复权)|
 |low_|最低价(前复权)|
 
-## A股K线数据（分钟线、日线、周线、月线） TDengine -> finance-> bars
+### 2. bars A股K线数据（分钟线、日线、周线、月线）
 
 * 超级表：`bars`
 * 子表名: `{symbol}_{period}`
@@ -208,7 +249,7 @@
 |volume|成交量|int|
 |amount|成交额|double|
 
-## A股全市场统计数据(排除了ST股) TDengine -> finance-> market_stats
+### 3. market_stats A股全市场统计数据(排除了ST股)
 
 |字段名|说明|
 |--|--|
@@ -234,7 +275,7 @@
 |lb11|11连板数量|
 |lb12|12连板数量|
 
-## 同花顺概念板块日线行情数据 TDengine -> finance-> bars_ths_index_daily
+### 4. bars_ths_index_daily 同花顺概念板块日线行情数据
 
 * 超级表：`bars_ths_index_daily`
 * 子表名: `{symbol}`
@@ -253,7 +294,7 @@
 |volume|成交量|
 |turnover_rate|换手率|
 
-## 大盘监控数据 TDengine->finance-> dpjk
+### 5. dpjk 大盘监控数据
 
 * 超级表：`dpjk`
 * 子表名: `{period}_{is_k_min}_{n}`
@@ -271,39 +312,7 @@
 |sz399001|指数多空线|
 |sz399006|指数多空线|
 
-## 财务三大报表数据
-
-1. 资产负债表 `MongoDB->finance->finance_balancesheet`
-2. 利润表 `MongoDB->finance->finance_income`
-3. 利润表当季 `MongoDB->finance->finance_income_q`
-4. 现金流量表 `MongoDB->finance->finance_cashflow`
-5. 现金流量表当季 `MongoDB->finance->finance_cashflow_q`
-
-数据表字段说明见：[TusharePro](https://tushare.pro/document/2?doc_id=16)
-
-## 龙虎榜数据 MongoDB -> finance ->lhb
-
-|字段名|说明|类型|
-|--|--|--|
-|trade_date|交易日期|int (index) (%Y%m%d)|
-|symbol|代码|string (index)|
-|name|名称|string|
-|close|收盘价|float|
-|pct_change|涨跌幅|float|
-|turnover_rate|换手率|float|
-|amount|总成交额|float|
-|l_sell|龙虎榜卖出额|float|
-|l_buy|龙虎榜买入额|float|
-|l_amount|龙虎榜成交额|float|
-|net_amount|龙虎榜净买入额|float|
-|net_rate|龙虎榜净买额占比|float|
-|amount_rate|龙虎榜成交额占比|float|
-|float_values|当日流通市值|float|
-|reason|上榜理由|string or list of strings|
-|buy_top5_inst|买入金额最大前5名|`[{'exalter':'营业部名称','buy_amount':'买入额（元）','buy_rate':'买入占总成交比例','sell_amount':'卖出额（元）','sell_rate':'卖出占总成交比例','net_buy':'净成交额（元）'},...]`|
-|sell_top5_inst|卖出金额最大前5名|`[{'exalter':'营业部名称','buy_amount':'买入额（元）','buy_rate':'买入占总成交比例','sell_amount':'卖出额（元）','sell_rate':'卖出占总成交比例','net_buy':'净成交额（元）'},...]`|
-
-## 可转债日线详细数据 TDengine -> finance-> bars_cb_daily
+### 6. bars_cb_daily 可转债日线详细数据 
 
 * 超级表：`bars_cb_daily`
 * 子表名: `{symbol}`
@@ -332,21 +341,37 @@
 |is_call|是否赎回：1已满足强赎条件、2公告提示强赎、3公告实施强赎、4公告到期赎回、5公告不强赎|int|
 |call_type|赎回类型：1到赎、2强赎|int|
 
-## 申万行业(1L,2L,3L)基本信息 -- MongoDB->finance->basic_info_sw_industry
+### 7. ticks
+
+* 超级表：`ticks`
+* 子表名: `{symbol}`
+* TAGS: `(symbol, exchange)`
 
 |字段名|说明|类型|
 |--|--|--|
-|l1_name|一级行业|string|
-|l2_name|二级行业|string|
-|l3_name|三级行业|string|
-|industry_code|行业代码|string|
-|index_code|指数代码|string|
-|version|申万行业标准版本(SW2011：2011年版本，SW2014：2014年版本，SW2021：2021年版本)|string|
+|dt|时间戳|datetime|
+|last_price|最新价|float|
+|volume|成交量|int|
+|amount|成交额|int|
+|bid_price1|买1价|float|
+|ask_price1|卖1价|float|
+|bid_volume1|买1量|int|
+|ask_volume1|卖1量|int|
 
-## 筹码分布 MongoDB->finance->cyq_chips
+### 8. tick_bars K线数据
 
-|字段名|说明|类型|
-|--|--|--|
-|dt|日期|datetime|
-|symbol|标的|string|
-|data|筹码分布|sorted list([(price, percentage), ....])|
+由ticks数据生成，方便ticks的读取和回放
+
+* 超级表：`tick_bars`
+* 子表名: `{symbol}_{period}`
+* TAGS: `(symbol, period, exchange)`
+
+|字段名|说明|
+|--|--|
+|dt|K线时间（按收盘）|
+|open|开盘价|
+|high|最高价|
+|low|最低价|
+|close|收盘价|
+|volume|成交量|
+|amount|成交额|

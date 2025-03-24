@@ -57,7 +57,7 @@ def _to_finance_data_q(df: pd.DataFrame):
         "comp_type",
         "year",
     ]
-    for _, _df in df.groupby(by=["year"]):
+    for _, _df in df.groupby(by="year"):
         for col in _df.columns:
             if col in non_data_cols:
                 continue

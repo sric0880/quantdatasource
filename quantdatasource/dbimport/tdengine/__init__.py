@@ -375,7 +375,3 @@ def drop_col(tablename, col):
     conn = get_conn_tdengine()
     _sql = f"ALTER TABLE {tablename} DROP COLUMN {col}"
     conn.execute(_sql)
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level="DEBUG")

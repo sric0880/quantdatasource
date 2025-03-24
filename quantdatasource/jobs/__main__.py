@@ -49,6 +49,7 @@ def main(
         )
     else:
         logging.basicConfig(level=loglevel, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+        logging.root.setLevel(level=loglevel)
 
     if show:
         keys = ["id", "name", "trigger", "day_of_week", "hour", "minute", "second"]
@@ -65,6 +66,8 @@ def main(
         for job in all_jobs:
             if job.id == job_id:
                 job(only_collect=only_collect, only_import=only_import, dt=dt)
+                return
+        logging.error(f"cannot find job id {job_id}")
     else:
         scheduler = BlockingScheduler()
         for job in all_jobs:

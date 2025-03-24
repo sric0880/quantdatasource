@@ -15,12 +15,12 @@ def addition_read_lhb(lhb_path, lhb_inst_path):
     df = df.drop_duplicates(subset=["symbol"], keep="last")
     data = df.to_dict(orient="records")
     data_dct = {d["symbol"]: d for d in data}
-    for symbol, sub_mrd in many_reason_df.groupby(by=["symbol"]):
+    for symbol, sub_mrd in many_reason_df.groupby(by="symbol"):
         data_dct[symbol]["reason"] = sub_mrd["reason"].to_list()
     if lhb_inst_path.exists():
         inst_df = pd.read_csv(lhb_inst_path)
         inst_df = inst_df.fillna(0)
-        for symbol, sub_inst_df in inst_df.groupby(by=["ts_code"]):
+        for symbol, sub_inst_df in inst_df.groupby(by="ts_code"):
             _buy_inst_df = sub_inst_df.loc[sub_inst_df["side"] == 0]  # 买入
             _buy_inst_df = _buy_inst_df.drop_duplicates(
                 subset=["exalter"], keep="first"

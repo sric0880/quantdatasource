@@ -227,6 +227,32 @@ def tushare_misc_data(dt, is_collect, is_import):
         )
 
         chinese_names = dict(zip(stock_basic_df["symbol"], stock_basic_df["name"]))
+        daily_df = pd.read_csv(api.daily_bars_addition_path, index_col=0)
+        to_create_symbols = tdengine.not_exist_symbols(
+            daily_df["ts_code"].to_list(), "bars_stock_daily"
+        )
+        logging.info(f"需要新建的表：{to_create_symbols}")
+        tdengine.create_child_tables(
+            [
+                tdengine.get_tbname(tb, stable="bars_stock_daily")
+                for tb in to_create_symbols
+            ],
+            "bars_stock_daily",
+            [(symbol,) for symbol in to_create_symbols],
+        )
+        tdengine.create_child_tables(
+            [tdengine.get_tbname(f"{tb}_w", stable="bars") for tb in to_create_symbols],
+            "bars",
+            [(symbol, "w") for symbol in to_create_symbols],
+        )
+        tdengine.create_child_tables(
+            [
+                tdengine.get_tbname(f"{tb}_mon", stable="bars")
+                for tb in to_create_symbols
+            ],
+            "bars",
+            [(symbol, "mon") for symbol in to_create_symbols],
+        )
         daily_bars, dr_symbols, market_stats = stock.addition_read_stock_daily_bars(
             dt,
             api.daily_bars_addition_path,
@@ -248,20 +274,15 @@ def tushare_misc_data(dt, is_collect, is_import):
             adj_df = stock_utils.cal_adjust_factors(symbol, close_df)
             adjust_factors_collection.delete_many({"symbol": symbol})
             adjust_factors_collection.insert_many(adj_df.to_dict(orient="records"))
-
         tdengine.insert_one(market_stats, "market_stats")
         logging.info(f"  市场统计数据导入完成")
-
         stock_utils.calc_bars_stock_week_and_month_and_import_to_tdengine(
             adjust_factors_collection, dr_symbols
         )
 
-        mongodb.insert_many(
-            lhb.addition_read_lhb(api.lhb_addition_path, api.lhb_inst_addition_path),
-            "finance",
-            "lhb",
-            drop=False,
-        )
+        lhb_collection = conn["finance"]["lhb"]
+        lhb_collection.insert_many(lhb.addition_read_lhb(api.lhb_addition_path, api.lhb_inst_addition_path))
+        logging.info(f"写入MongoDB[finance][lhb]")
 
         cb_basic_df = cb.read_basic(api.basic_cb_path)
         mongodb.insert_many(

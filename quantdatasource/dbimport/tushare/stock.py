@@ -265,8 +265,6 @@ def addition_read_stock_daily_bars(
             elif new_kline["maxupordown"] < 0:
                 new_kline["lb_down_count"] = 1
 
-        logging.info(f"  发生除权的股票有: {dr_symbols}")
-
         all_datas.append(new_kline)
 
         if "ST" not in stockname and not "退" in stockname:
@@ -281,6 +279,7 @@ def addition_read_stock_daily_bars(
                 count_of_yizidown += 1
             _lb_counts[new_kline["lb_up_count"]] += 1
 
+    logging.info(f"  发生除权的股票有: {dr_symbols}")
     df = pd.DataFrame(all_datas)
     df = df.astype(
         {

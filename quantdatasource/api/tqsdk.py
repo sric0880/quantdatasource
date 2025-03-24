@@ -255,7 +255,7 @@ class TQSDKApi:
             print(symbol)
             df = cont_history[["date", symbol]]
             df = df.rename(columns={symbol: "symbol"})
-            df = df.groupby(by=["symbol"], sort=False, as_index=False).first()
+            df = df.groupby(by="symbol", sort=False, as_index=False).first()
             df["symbol"] = df["symbol"].map(to_tushare_symbol)
             df["pre_symbol"] = df["symbol"].shift(1)
             df["diff"] = df.apply(
