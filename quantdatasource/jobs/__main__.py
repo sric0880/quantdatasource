@@ -46,10 +46,10 @@ def main(
                     logfile, when="D", backupCount=30, encoding="utf-8"
                 )
             ],
+            force=True
         )
     else:
-        logging.basicConfig(level=loglevel, format=LOG_FORMAT, datefmt=DATE_FORMAT)
-        logging.root.setLevel(level=loglevel)
+        logging.basicConfig(level=loglevel, format=LOG_FORMAT, datefmt=DATE_FORMAT, force=True)
 
     if show:
         keys = ["id", "name", "trigger", "day_of_week", "hour", "minute", "second"]
