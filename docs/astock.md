@@ -103,8 +103,6 @@
 
 ### 7. hot_stocks_ths 同花顺热股数据
 
-已暂停更新
-
 数据说明：1h热度排行榜前100数据，每天15点15分更新
 
 |字段名|说明|
@@ -149,7 +147,6 @@
 |reason|上榜理由|string or list of strings|
 |buy_top5_inst|买入金额最大前5名|`[{'exalter':'营业部名称','buy_amount':'买入额（元）','buy_rate':'买入占总成交比例','sell_amount':'卖出额（元）','sell_rate':'卖出占总成交比例','net_buy':'净成交额（元）'},...]`|
 |sell_top5_inst|卖出金额最大前5名|`[{'exalter':'营业部名称','buy_amount':'买入额（元）','buy_rate':'买入占总成交比例','sell_amount':'卖出额（元）','sell_rate':'卖出占总成交比例','net_buy':'净成交额（元）'},...]`|
-
 
 ### 10. basic_info_sw_industry 申万行业(1L,2L,3L)基本信息
 
@@ -294,25 +291,7 @@ ticks数据TDengine需要单独建库，时区：Asia/Shanghai
 |volume|成交量|
 |turnover_rate|换手率|
 
-### 5. dpjk 大盘监控数据
-
-* 超级表：`dpjk`
-* 子表名: `{period}_{is_k_min}_{n}`
-* TAGS: `(period, is_k_min, n)`
-
-|字段名|说明|
-|--|--|
-|dt|周期最后一个交易日，支持周期：日、周、月|
-|sh000016|指数多空线|
-|sh000300|指数多空线|
-|sh000905|指数多空线|
-|sh000852|指数多空线|
-|sz399303|指数多空线|
-|sh000001|指数多空线|
-|sz399001|指数多空线|
-|sz399006|指数多空线|
-
-### 6. bars_cb_daily 可转债日线详细数据 
+### 5. bars_cb_daily 可转债日线详细数据
 
 * 超级表：`bars_cb_daily`
 * 子表名: `{symbol}`

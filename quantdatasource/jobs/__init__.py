@@ -1,5 +1,6 @@
 from quantdatasource.jobs.ctp_download_contracts import *
 from quantdatasource.jobs.eastmoney_analyst_reports import *
+from quantdatasource.jobs.ths_hot_stocks import *
 from quantdatasource.jobs.tqsdk_calc_adj_factors import *
 from quantdatasource.jobs.tqsdk_future_bars import *
 from quantdatasource.jobs.tqsdk_future_basic import *

@@ -145,8 +145,8 @@ ticks数据TDengine需要单独建库，时区：Asia/Shanghai
 * 子表名: `{symbol}_{period}`
 * TAGS: `(symbol, period, exchange)`
 
-|字段名|说明|
-|--|--|
+|字段名|说明|类型|
+|--|--|--|
 |dt|K线时间（按收盘）|datetime|
 |open|开盘价|float|
 |high|最高价|float|

@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS {tablename} AS
+    SELECT * FROM read_csv('{csv_path}', header=true, columns = {{
+        "dt":"TIMESTAMP",
+        "open":"FLOAT",
+        "high":"FLOAT",
+        "low":"FLOAT",
+        "close":"FLOAT",
+        "volume":"UINTEGER",
+        "amount":"UBIGINT",
+        "preclose":"FLOAT",
+        "change":"FLOAT",
+        "pct_chg":"FLOAT",
+        "convert_price":"FLOAT",
+        "cb_value":"FLOAT",
+        "cb_over_rate":"FLOAT",
+        "remain_size":"UBIGINT",
+        "bond_over_rate":"FLOAT",
+        "bond_value":"FLOAT",
+        "call_price":"FLOAT",
+        "call_price_tax":"FLOAT",
+        "is_call":"TINYINT",
+        "call_type":"TINYINT",
+    }});
