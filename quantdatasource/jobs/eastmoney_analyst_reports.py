@@ -9,6 +9,7 @@ __all__ = ["eastmoney_analyst_reports"]
 
 # 增量下载研报数据
 @job(
+    service_type="datasource-mongo",
     trigger="cron",
     id="astock_eastmoney_reports",
     name="[EastMoneyApi]更新研报",

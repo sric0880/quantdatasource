@@ -107,6 +107,7 @@ def _mongo_import_finance_data(row, symbol, tablename):
 
 
 @job(
+    service_type="datasource-all",
     trigger="cron",
     id="astock_tushare",
     name="[TushareApi]其他",
@@ -302,6 +303,7 @@ def tushare_misc_data(dt, is_collect, is_import):
 
 
 @job(
+    service_type="datasource-all",
     id="astock_tushare_daily_fillup",
     name="[TushareApi]补全历史A股日线[Only Import](未测试)",
 )

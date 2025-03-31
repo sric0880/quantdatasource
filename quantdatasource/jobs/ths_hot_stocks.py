@@ -9,6 +9,7 @@ __all__ = ["ths_hot_stocks"]
 
 
 @job(
+    service_type="datasource-mongo",
     trigger="cron",
     id="astock_ths_hot_stocks",
     name="[THSApi]更新同花顺热股",

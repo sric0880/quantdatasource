@@ -9,6 +9,7 @@ __all__ = ["tushare_cb_data"]
 
 # 每周6晚上更新
 @job(
+    service_type="datasource-all",
     trigger="cron",
     id="astock_tushare_cb_data",
     name="[TushareApi]可转债转股和赎回",

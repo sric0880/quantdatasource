@@ -7,6 +7,7 @@ __all__ = ["tushare_index_bars"]
 
 
 @job(
+    service_type="datasource-all",
     trigger="cron",
     id="astock_tushare_index",
     name="[TushareApi]大盘指数日/周/月线",

@@ -9,8 +9,9 @@ from quantdatasource.jobs.msg_email import close_email_api, init_email_api, send
 
 
 class AdditionCollectAndImport:
-    def __init__(self, func, **job_params) -> None:
+    def __init__(self, func, service_type=None, **job_params) -> None:
         self.func = func
+        self.service_type = service_type
         self.job_params = job_params
 
     @property
@@ -20,7 +21,7 @@ class AdditionCollectAndImport:
     def _addition_collect_and_import(self, is_collect, is_import, dt=None):
         try:
             dt = dt if dt is not None else datetime.now()
-            with open_dbs():
+            with open_dbs(stype=self.service_type):
                 self.func(dt, is_collect, is_import)
         except Exception as e:
             logging.error("", exc_info=e)
@@ -54,9 +55,9 @@ class AdditionCollectAndImport:
 all_jobs = []
 
 
-def job(**job_params):
+def job(service_type=None, **job_params):
     def wrapper(func):
-        job = AdditionCollectAndImport(func, **job_params)
+        job = AdditionCollectAndImport(func, service_type, **job_params)
         all_jobs.append(job)
         return job
 

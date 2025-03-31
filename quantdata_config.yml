@@ -16,3 +16,13 @@ tdengine:
   password: "taosdata"
   dbname: "finance"
   timezone: "UTC"
+
+services:
+  datasource-mongo:
+    mongodb: mongodb
+  datasource-all:
+    mongodb: mongodb
+    tdengine: tdengine
+  signal:
+    mongodb: mongodb
+    duckdb: duckdb

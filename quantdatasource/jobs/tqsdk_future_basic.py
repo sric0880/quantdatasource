@@ -9,6 +9,7 @@ __all__ = ["tqsdk_future_basic"]
 
 
 @job(
+    service_type="datasource-mongo",
     trigger="cron",
     id="future_tqsdk_future_basic",
     name="[TQSDKApi]更新期货basic数据",

@@ -7,6 +7,7 @@ __all__ = ["tushare_cb_daily"]
 
 
 @job(
+    service_type="datasource-all",
     trigger="cron",
     id="astock_tushare_cb_daily",
     name="[TushareApi]可转债日线",

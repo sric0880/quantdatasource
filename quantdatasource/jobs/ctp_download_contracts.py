@@ -17,6 +17,7 @@ def _download_subprocess(config):
 
 
 @job(
+    service_type="datasource-mongo",
     # trigger="cron", # 速度太慢了，暂时关闭
     id="future_ctp_contracts",
     name="[CTP]更新期货合约手续费和保证金",

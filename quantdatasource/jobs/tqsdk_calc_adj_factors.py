@@ -9,6 +9,7 @@ __all__ = ["tqsdk_calc_adj_factors"]
 
 
 @job(
+    service_type="datasource-mongo",
     id="future_tqsdk_calc_adj_factors",
     name="[TQSDKApi]更新期货价差数据(未测试)",
 )

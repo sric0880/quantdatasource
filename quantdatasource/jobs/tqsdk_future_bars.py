@@ -9,6 +9,7 @@ __all__ = ["tqsdk_future_bars"]
 
 
 @job(
+    service_type="datasource-all",
     id="future_tqsdk_future_bars",
     name="[TQSDKApi|TushareFutureApi]更新期货K线数据(未测试)",
 )
