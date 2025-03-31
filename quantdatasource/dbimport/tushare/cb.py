@@ -145,7 +145,7 @@ def read_cb_share(symbol_basic_info, cb_share_path):
         return
     logging.info(f"读取可转债转股数据 {symbol}")
     first_conv_price = symbol_basic_info.get("first_conv_price", 0)
-    list_date = pd.to_datetime(symbol_basic_info["list_date"], format="%Y-%m-%d")
+    list_date = pd.to_datetime(symbol_basic_info["list_date"], format="%Y%m%d")
     issue_size = symbol_basic_info["issue_size"]
     cb_share_csv = Path(cb_share_path, f"{symbol}.csv")
     df = pd.read_csv(cb_share_csv)
