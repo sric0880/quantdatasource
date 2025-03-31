@@ -339,17 +339,19 @@ def addition_read_stock_daily_bars(
     ratio_of_downlimit = count_of_downlimit / all_stock_number
     ratio_of_yiziup = count_of_yiziup / all_stock_number
     ratio_of_yizidown = count_of_yizidown / all_stock_number
-    market_stats = [
-        today,
-        count_of_uplimit,
-        count_of_downlimit,
-        count_of_yiziup,
-        count_of_yizidown,
-        ratio_of_uplimit,
-        ratio_of_downlimit,
-        ratio_of_yiziup,
-        ratio_of_yizidown,
-    ]
-    market_stats.extend([_lb_counts.get(i, 0) for i in range(1, 13)])
+
+    market_stats = {
+        "dt": today,
+        "count_of_uplimit": count_of_uplimit,
+        "count_of_downlimit": count_of_downlimit,
+        "count_of_yiziup": count_of_yiziup,
+        "count_of_yizidown": count_of_yizidown,
+        "ratio_of_uplimit": ratio_of_uplimit,
+        "ratio_of_downlimit": ratio_of_downlimit,
+        "ratio_of_yiziup": ratio_of_yiziup,
+        "ratio_of_yizidown": ratio_of_yizidown,
+    }
+    for i in range(1, 13):
+        market_stats[f"lb{i}"] = _lb_counts.get(i, 0)
 
     return (df, dr_symbols, market_stats)

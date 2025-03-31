@@ -167,6 +167,32 @@
 |symbol|标的|string|
 |data|筹码分布|sorted list([(price, percentage), ....])|
 
+### 12. market_stats A股全市场统计数据(排除了ST股)
+
+|字段名|说明|
+|--|--|
+|dt|交易日期|
+|count_of_uplimit|涨停数|
+|count_of_downlimit|跌停数|
+|count_of_yiziup|一字涨停数|
+|count_of_yizidown|一字跌停数|
+|ratio_of_uplimit|涨停数占所有股数比例|
+|ratio_of_downlimit|跌停数占所有股数比例|
+|ratio_of_yiziup|一字涨停数占所有股数比例|
+|ratio_of_yizidown|一字跌停数占所有股数比例|
+|lb1|首板数量|
+|lb2|2连板数量|
+|lb3|3连板数量|
+|lb4|4连板数量|
+|lb5|5连板数量|
+|lb6|6连板数量|
+|lb7|7连板数量|
+|lb8|8连板数量|
+|lb9|9连板数量|
+|lb10|10连板数量|
+|lb11|11连板数量|
+|lb12|12连板数量|
+
 ## TDengine/DuckDB
 
 ticks数据TDengine需要单独建库，时区：Asia/Shanghai
@@ -246,33 +272,7 @@ ticks数据TDengine需要单独建库，时区：Asia/Shanghai
 |volume|成交量|int|
 |amount|成交额|double|
 
-### 3. market_stats A股全市场统计数据(排除了ST股)
-
-|字段名|说明|
-|--|--|
-|dt|交易日期|
-|count_of_uplimit|涨停数|
-|count_of_downlimit|跌停数|
-|count_of_yiziup|一字涨停数|
-|count_of_yizidown|一字跌停数|
-|ratio_of_uplimit|涨停数占所有股数比例|
-|ratio_of_downlimit|跌停数占所有股数比例|
-|ratio_of_yiziup|一字涨停数占所有股数比例|
-|ratio_of_yizidown|一字跌停数占所有股数比例|
-|lb1|首板数量|
-|lb2|2连板数量|
-|lb3|3连板数量|
-|lb4|4连板数量|
-|lb5|5连板数量|
-|lb6|6连板数量|
-|lb7|7连板数量|
-|lb8|8连板数量|
-|lb9|9连板数量|
-|lb10|10连板数量|
-|lb11|11连板数量|
-|lb12|12连板数量|
-
-### 4. bars_ths_index_daily 同花顺概念板块日线行情数据
+### 3. bars_ths_index_daily 同花顺概念板块日线行情数据
 
 * 超级表：`bars_ths_index_daily`
 * 子表名: `{symbol}`
@@ -291,7 +291,7 @@ ticks数据TDengine需要单独建库，时区：Asia/Shanghai
 |volume|成交量|
 |turnover_rate|换手率|
 
-### 5. bars_cb_daily 可转债日线详细数据
+### 4. bars_cb_daily 可转债日线详细数据
 
 * 超级表：`bars_cb_daily`
 * 子表名: `{symbol}`
@@ -320,7 +320,7 @@ ticks数据TDengine需要单独建库，时区：Asia/Shanghai
 |is_call|是否赎回：1已满足强赎条件、2公告提示强赎、3公告实施强赎、4公告到期赎回、5公告不强赎|int|
 |call_type|赎回类型：1到赎、2强赎|int|
 
-### 7. ticks
+### 5. ticks
 
 * 超级表：`ticks`
 * 子表名: `{symbol}`
@@ -337,7 +337,7 @@ ticks数据TDengine需要单独建库，时区：Asia/Shanghai
 |bid_volume1|买1量|int|
 |ask_volume1|卖1量|int|
 
-### 8. tick_bars K线数据
+### 6. tick_bars K线数据
 
 由ticks数据生成，方便ticks的读取和回放
 

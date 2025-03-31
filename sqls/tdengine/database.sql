@@ -1,8 +1,6 @@
 CREATE DATABASE IF NOT EXISTS finance KEEP 36500 DURATION 3650 VGROUPS 2 MAXROWS 10000 MINROWS 200 CACHEMODEL 'last_row' CACHESIZE 512 BUFFER 1024;
 USE finance;
 
-CREATE TABLE IF NOT EXISTS market_stats (dt timestamp,count_of_uplimit smallint unsigned,count_of_downlimit smallint unsigned,count_of_yiziup smallint unsigned,count_of_yizidown smallint unsigned,ratio_of_uplimit float,ratio_of_downlimit float,ratio_of_yiziup float,ratio_of_yizidown float,lb1 smallint unsigned,lb2 smallint unsigned,lb3 smallint unsigned,lb4 smallint unsigned,lb5 smallint unsigned,lb6 smallint unsigned,lb7 smallint unsigned,lb8 smallint unsigned,lb9 smallint unsigned,lb10 smallint unsigned,lb11 smallint unsigned,lb12 smallint unsigned);
-
 CREATE STABLE IF NOT EXISTS bars (dt timestamp, open float, high float, low float, close float, volume bigint unsigned, amount double) TAGS (symbol binary(9), period binary(4));
 
 CREATE STABLE IF NOT EXISTS bars_ths_index_daily(dt timestamp,open float,high float,low float,close float,avg_price float,change float,pct_change float,volume bigint unsigned,turnover_rate float) TAGS (symbol binary(9));
