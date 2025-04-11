@@ -1,28 +1,49 @@
-# duckdb:
-#   uris:
-#     - "//DESKTOP-6NI30V4/bt_data/duckdb/finance.db"
-#     - "//DESKTOP-6NI30V4/bt_data/duckdb/finance_ticks_ctpfuture.db"
+duckdb-astock-cb:
+  read_only: false
+  uris:
+    - "D://bt_data/duckdb/finance_astock/bars_cb_daily.db"
+
+duckdb-astock-daily:
+  memory_limit: 15G
+  read_only: false
+  uris:
+    - "D://bt_data/duckdb/finance_astock/bars_stock.db"
+    - "D://bt_data/duckdb/finance_astock/bars_stock_daily.db"
+    - "D://bt_data/duckdb/finance_astock/bars_ths_index_daily.db"
+
+duckdb-astock-index:
+  read_only: false
+  uris:
+    - "D://bt_data/duckdb/finance_astock/bars_index.db"
+
+duckdb-ctp-ticks:
+  uris:
+    - "D://bt_data/duckdb/finance_ctpfuture/ticks.db"
 
 mongodb:
-  host: "192.168.2.9"
+  host: "127.0.0.1"
   port: 27017
   user: "root"
   password: "admin"
 
-tdengine:
-  host: "192.168.2.40"
-  port: 6030
-  user: "root"
-  password: "taosdata"
-  dbname: "finance"
-  timezone: "UTC"
+# tdengine:
+#   host: "127.0.0.1"
+#   port: 6030
+#   user: "root"
+#   password: "taosdata"
+#   dbname: "finance"
+#   timezone: "UTC"
 
 services:
   datasource-mongo:
     mongodb: mongodb
-  datasource-all:
+  datasource-astock-cb:
     mongodb: mongodb
-    tdengine: tdengine
-  signal:
+    duckdb: duckdb-astock-cb
+  datasource-astock-index:
     mongodb: mongodb
-    duckdb: duckdb
+    duckdb: duckdb-astock-index
+  datasource-astock-daily:
+    mongodb: mongodb
+    duckdb: duckdb-astock-daily
+

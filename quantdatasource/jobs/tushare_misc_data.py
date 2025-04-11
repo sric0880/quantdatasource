@@ -1,7 +1,7 @@
 import logging
 
 import pandas as pd
-from quantdata.databases._tdengine import get_data
+from quantdata import get_data_df
 
 from quantdatasource.api.tushare import TushareApi
 from quantdatasource.dbimport import mongodb
@@ -107,7 +107,7 @@ def _mongo_import_finance_data(row, symbol, tablename):
 
 
 @job(
-    service_type="datasource-all",
+    service_type="datasource-astock-daily",
     trigger="cron",
     id="astock_tushare",
     name="[TushareApi]其他",
@@ -156,7 +156,7 @@ def tushare_misc_data(dt, is_collect, is_import):
         api.addition_download_lhb()
 
     if is_import:
-        from quantdatasource.dbimport import tdengine
+        from quantdatasource.dbimport import duckdb
         from quantdatasource.dbimport.tushare import (
             cb,
             lhb,
@@ -167,29 +167,6 @@ def tushare_misc_data(dt, is_collect, is_import):
 
         stock_basic_df = stock.read_basic(api.basic_stock_path)
         mongodb.insert_many(stock_basic_df, "finance", "basic_info_stocks")
-
-        # 创建子表
-        bars_tablenames = []
-        bars_tags = []
-        daily_stock_bars_tablenames = []
-        daily_bars_tags = []
-        for row in stock_basic_df.itertuples():
-            symbol = row.symbol
-            for interval in ["1D", "w", "mon"]:
-                if interval == "1D":
-                    daily_stock_bars_tablenames.append(
-                        tdengine.get_tbname(symbol, stable="bars_stock_daily")
-                    )
-                    daily_bars_tags.append((symbol,))
-                else:
-                    bars_tablenames.append(
-                        tdengine.get_tbname(f"{symbol}_{interval}", stable="bars")
-                    )
-                    bars_tags.append((symbol, interval))
-        tdengine.create_child_tables(
-            daily_stock_bars_tablenames, "bars_stock_daily", daily_bars_tags
-        )
-        tdengine.create_child_tables(bars_tablenames, "bars", bars_tags)
 
         concepts_basic_df = ths_index.read_ths_concepts_basic(
             api.ths_index_a_concepts_path
@@ -211,16 +188,7 @@ def tushare_misc_data(dt, is_collect, is_import):
         else:
             logging.info("同花顺概念股成分没有增量改变")
 
-        bars_tablenames = []
-        bars_tags = []
-        for row in concepts_basic_df.itertuples():
-            symbol = row.symbol
-            bars_tablenames.append(
-                tdengine.get_tbname(symbol, stable="bars_ths_index_daily")
-            )
-            bars_tags.append((symbol,))
-        tdengine.create_child_tables(bars_tablenames, "bars_ths_index_daily", bars_tags)
-        tdengine.insert_multi_tables(
+        duckdb.insert_multi_tables(
             ths_index.addition_read_concepts_bars(
                 api.ths_daily_bars_addition_path, concepts_basic_df
             ),
@@ -228,32 +196,6 @@ def tushare_misc_data(dt, is_collect, is_import):
         )
 
         chinese_names = dict(zip(stock_basic_df["symbol"], stock_basic_df["name"]))
-        daily_df = pd.read_csv(api.daily_bars_addition_path, index_col=0)
-        to_create_symbols = tdengine.not_exist_symbols(
-            daily_df["ts_code"].to_list(), "bars_stock_daily"
-        )
-        logging.info(f"需要新建的表：{to_create_symbols}")
-        tdengine.create_child_tables(
-            [
-                tdengine.get_tbname(tb, stable="bars_stock_daily")
-                for tb in to_create_symbols
-            ],
-            "bars_stock_daily",
-            [(symbol,) for symbol in to_create_symbols],
-        )
-        tdengine.create_child_tables(
-            [tdengine.get_tbname(f"{tb}_w", stable="bars") for tb in to_create_symbols],
-            "bars",
-            [(symbol, "w") for symbol in to_create_symbols],
-        )
-        tdengine.create_child_tables(
-            [
-                tdengine.get_tbname(f"{tb}_mon", stable="bars")
-                for tb in to_create_symbols
-            ],
-            "bars",
-            [(symbol, "mon") for symbol in to_create_symbols],
-        )
         daily_bars, dr_symbols, market_stats = stock.addition_read_stock_daily_bars(
             dt,
             api.daily_bars_addition_path,
@@ -262,15 +204,15 @@ def tushare_misc_data(dt, is_collect, is_import):
             chinese_names,
             conn["finance"],
         )
-        tdengine.insert_multi_tables(daily_bars, "bars_stock_daily")
-        logging.info(f"  股票详情日线导入完成")
+        all_symbols = daily_bars["tablename"].to_list()
+        duckdb.insert_multi_tables(daily_bars, "bars_stock_daily")
 
         adjust_factors_collection = conn["finance"]["adjust_factors"]
         for symbol in dr_symbols:
-            close_df = get_data(
-                symbol,
-                stable="bars_stock_daily",
-                fields=["dt", "close", "preclose"],
+            close_df = get_data_df(
+                "bars_stock_daily",
+                duckdb.get_tbname("_" + symbol),
+                fields=["dt", "_close", "preclose"],
             )
             adj_df = stock_utils.cal_adjust_factors(symbol, close_df)
             adjust_factors_collection.delete_many({"symbol": symbol})
@@ -278,12 +220,14 @@ def tushare_misc_data(dt, is_collect, is_import):
         market_stats_collection = conn["finance"]["market_stats"]
         market_stats_collection.insert_one(market_stats)
         logging.info(f"写入MongoDB[finance][market_stats]")
-        stock_utils.calc_bars_stock_week_and_month_and_import_to_tdengine(
-            adjust_factors_collection, dr_symbols
+        stock_utils.calc_bars_stock_week_and_month_and_import_to_duckdb(
+            adjust_factors_collection, all_symbols, dr_symbols
         )
 
         lhb_collection = conn["finance"]["lhb"]
-        lhb_collection.insert_many(lhb.addition_read_lhb(api.lhb_addition_path, api.lhb_inst_addition_path))
+        lhb_collection.insert_many(
+            lhb.addition_read_lhb(api.lhb_addition_path, api.lhb_inst_addition_path)
+        )
         logging.info(f"写入MongoDB[finance][lhb]")
 
         cb_basic_df = cb.read_basic(api.basic_cb_path)
@@ -293,25 +237,17 @@ def tushare_misc_data(dt, is_collect, is_import):
             "basic_info_cbs",
             ignore_nan=True,
         )
-        # 创建子表
-        bars_tablenames = []
-        bars_tags = []
-        for row in cb_basic_df.itertuples():
-            symbol = row.ts_code
-            bars_tablenames.append(tdengine.get_tbname(symbol, stable="bars_cb_daily"))
-            bars_tags.append((symbol,))
-        tdengine.create_child_tables(bars_tablenames, "bars_cb_daily", bars_tags)
 
 
 @job(
-    service_type="datasource-all",
+    service_type="datasource-astock-daily",
     id="astock_tushare_daily_fillup",
     name="[TushareApi]补全历史A股日线[Only Import](未测试)",
 )
 def tushare_daily_bars(dt, is_collect, is_import):
     api = TushareApi(tushare_token, astock_output, dt)
 
-    from quantdatasource.dbimport import tdengine
+    from quantdatasource.dbimport import duckdb
     from quantdatasource.dbimport.tushare import stock, stock_utils
 
     stock_basic_df = stock.read_basic(api.basic_stock_path)
@@ -326,23 +262,21 @@ def tushare_daily_bars(dt, is_collect, is_import):
         chinese_names,
         conn["finance"],
     )
-    tdengine.insert_multi_tables(daily_bars, "bars_stock_daily")
+    duckdb.insert_multi_tables(daily_bars, "bars_stock_daily")
     logging.info(f"  股票详情日线导入完成")
 
     adjust_factors_collection = conn["finance"]["adjust_factors"]
     for symbol in stock_utils.get_all_symbols():
-        close_df = get_data(
-            symbol,
-            stable="bars_stock_daily",
-            fields=["dt", "close", "preclose"],
+        close_df = get_data_df(
+            "bars_stock_daily",
+            duckdb.get_tbname("_" + symbol),
+            fields=["dt", "_close", "preclose"],
         )
         adj_df = stock_utils.cal_adjust_factors(symbol, close_df)
         adjust_factors_collection.delete_many({"symbol": symbol})
         adjust_factors_collection.insert_many(adj_df.to_dict(orient="records"))
 
-    stock_utils.calc_all_bars_stock_week_and_month_and_import_to_tdengine(
-        adjust_factors_collection
+    all_symbols = daily_bars["tablename"].to_list()
+    stock_utils.calc_all_bars_stock_week_and_month_and_import_to_duckdb(
+        adjust_factors_collection, all_symbols
     )
-
-    market_df = stock_utils.calc_market_stats(stock_basic_df)
-    tdengine.insert(market_df, "market_stats")

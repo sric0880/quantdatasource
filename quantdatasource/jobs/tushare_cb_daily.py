@@ -7,7 +7,7 @@ __all__ = ["tushare_cb_daily"]
 
 
 @job(
-    service_type="datasource-all",
+    service_type="datasource-astock-cb",
     trigger="cron",
     id="astock_tushare_cb_daily",
     name="[TushareApi]可转债日线",
@@ -25,14 +25,12 @@ def tushare_cb_daily(dt, is_collect, is_import):
         api.addition_download_cb_daily()
 
     if is_import:
-        from quantdatasource.dbimport import tdengine
+        from quantdatasource.dbimport import duckdb
         from quantdatasource.dbimport.tushare import cb
 
-        tdengine.insert_multi_tables(
+        duckdb.insert_multi_tables(
             cb.addition_read_cb_daily(
                 dt, api.cb_daily_bars_addition_path, api.basic_cb_path
             ),
             "bars_cb_daily",
-            whole_df=False,
-            reorder_cols=False,
         )

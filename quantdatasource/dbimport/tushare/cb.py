@@ -116,7 +116,7 @@ def read_cb_call(symbol, cb_call_path):
     df = pd.read_csv(cb_call_csv)
     if df.empty:
         logging.warning(f"读取可转债赎回数据 {symbol} 为空")
-        return
+        return None
     logging.info(f"读取可转债赎回数据 {symbol}")
     df["call_type"] = df["call_type"].map({"强赎": 2, "到赎": 1})
     df["is_call"] = df["is_call"].map(
@@ -142,7 +142,7 @@ def read_cb_share(symbol_basic_info, cb_share_path):
         logging.warning(
             f"读取可转债转股数据 {symbol} 基本信息中无list_date，推测无日线行情"
         )
-        return
+        return None
     logging.info(f"读取可转债转股数据 {symbol}")
     first_conv_price = symbol_basic_info.get("first_conv_price", 0)
     list_date = pd.to_datetime(symbol_basic_info["list_date"], format="%Y%m%d")
@@ -162,6 +162,7 @@ def read_cb_share(symbol_basic_info, cb_share_path):
         df = df.rename(columns={"publish_date": "dt"})
         df = df[["dt", "convert_price", "remain_size"]]
         df = pd.concat([first_day_df, df])
+        df = df.drop_duplicates(subset=["dt"], keep="last")
     else:
         df = first_day_df
     df = df.astype(

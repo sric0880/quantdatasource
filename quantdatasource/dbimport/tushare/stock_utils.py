@@ -1,13 +1,12 @@
-import copy
 import logging
 import os
 from collections import defaultdict
-from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
+import duckdb as db
 import numpy as np
 import pandas as pd
-from quantdata.databases._tdengine import get_data, get_data_last_row
+from quantdata import get_data_df, get_data_last_row
 
 
 def my_round(a):
@@ -78,7 +77,7 @@ def cal_adjust_factors(symbol, close_df):
     # 重新计算复权因子
     # 计算复权因子(前复权)
     logging.info(f"计算 {symbol} 前复权因子")
-    adj_prices = close_df["preclose"] / close_df["close"].shift(1)
+    adj_prices = close_df["preclose"] / close_df["_close"].shift(1)
     adjust_factors = adj_prices.iloc[::-1].cumprod().iloc[::-1].shift(-1, fill_value=1)
     adj_df = pd.DataFrame(
         {"adjust_factor": adjust_factors, "tradedate": close_df["dt"]}
@@ -86,11 +85,6 @@ def cal_adjust_factors(symbol, close_df):
     adj_df = adj_df.drop_duplicates(subset=["adjust_factor"])
     adj_df["symbol"] = symbol
     return adj_df
-
-
-def get_all_symbols():
-    _symbols = get_data("bars_stock_daily", fields=["DISTINCT symbol"], use_df=False)
-    return _symbols["symbol"]
 
 
 def fill_up_moneyflow(output):
@@ -272,26 +266,19 @@ def calc_market_stats(stock_basic_df):
     return market_df
 
 
-def calc_bars_stock_week_and_month_and_import_to_tdengine(
-    adjust_factors_collection, symbols=[]
+def calc_bars_stock_week_and_month_and_import_to_duckdb(
+    adjust_factors_collection, all_symbols, symbols=[]
 ):
-    from quantdatasource.dbimport import tdengine
+    from quantdatasource.dbimport import duckdb
 
-    # 当更新日线完成之后，将通过日线生成日线、周线和月线 (前复权)
-    week_insert_datas = []
-    month_insert_datas = []
-    for symbol in get_all_symbols():
+    # 当更新日线完成之后，将通过日线生成周线和月线 (前复权)
+    for symbol in all_symbols:
         _week_tbname = symbol + "_w"
         _month_tbname = symbol + "_mon"
         if symbol in symbols:
             # 删除之前的表
             logging.info(f"{symbol} 今日除权，需要重新计算前复权日线、周线、月线")
-            _d = get_data(
-                symbol,
-                stable="bars_stock_daily",
-                fields=["dt", "open", "high", "low", "close", "volume", "amount"],
-                use_df=True,
-            )
+            _d = get_data_df("bars_stock_daily", duckdb.get_tbname(symbol))
             if _d.empty:
                 continue
             adjs = adjust_factors_collection.find(
@@ -301,133 +288,94 @@ def calc_bars_stock_week_and_month_and_import_to_tdengine(
             adj_df = pd.DataFrame(adjs)
             if not adj_df.empty:
                 adj_df = adj_df.rename(columns={"tradedate": "dt"})
-                adj_df["dt"] = adj_df["dt"].dt.tz_localize("UTC")
+                adj_df["dt"] = adj_df["dt"].astype("datetime64[s]")
                 _d = pd.merge_ordered(left=_d, right=adj_df, on="dt", how="left")
-                _d["adjust_factor"] = _d["adjust_factor"].fillna(method="ffill")
-                _d["open"] = _d["open"] * _d["adjust_factor"]
-                _d["high"] = _d["high"] * _d["adjust_factor"]
-                _d["low"] = _d["low"] * _d["adjust_factor"]
-                _d["close"] = _d["close"] * _d["adjust_factor"]
+                _d["adjust_factor"].fillna(method="ffill", inplace=True)
+                _d["open"] = _d["_open"] * _d["adjust_factor"]
+                _d["high"] = _d["_high"] * _d["adjust_factor"]
+                _d["low"] = _d["_low"] * _d["adjust_factor"]
+                _d["close"] = _d["_close"] * _d["adjust_factor"]
+                _d.drop(columns=["adjust_factor"], inplace=True)
             _week_df = _daily_to_week(_d)
             _month_df = _daily_to_month(_d)
-            tbnames = [_week_tbname, _month_tbname]
-            tdengine.drop_tables(tbnames, "bars")
-            tdengine.create_child_tables(
-                [tdengine.get_tbname(tbname, stable="bars") for tbname in tbnames],
-                "bars",
-                [(symbol, "w"), (symbol, "mon")],
-            )
-            tdengine.insert(_week_df, _week_tbname, stable="bars")
+            duckdb.create_or_replace_table(_week_df, _week_tbname, "bars_stock")
             logging.info(f"-- 重新导入 {symbol} 周线完毕")
-            tdengine.insert(_month_df, _month_tbname, stable="bars")
+            duckdb.create_or_replace_table(_month_df, _month_tbname, "bars_stock")
             logging.info(f"-- 重新导入 {symbol} 月线完毕")
-            daily_df = _d[["dt", "open", "high", "low", "close"]]
-            daily_df = daily_df.rename(
-                columns={
-                    "open": "open_",
-                    "high": "high_",
-                    "low": "low_",
-                    "close": "close_",
-                }
-            )
-            tdengine.insert(daily_df, symbol, stable="bars_stock_daily", whole_df=False)
+            duckdb.create_or_replace_table(_d, symbol, "bars_stock_daily")
             logging.info(f"-- 重新导入 {symbol} 日线前复权价格完毕")
             adjs.close()
         else:
             last_row = get_data_last_row(
-                symbol,
-                stable="bars_stock_daily",
+                "bars_stock_daily",
+                duckdb.get_tbname(symbol),
                 fields=["dt", "open", "high", "low", "close", "volume", "amount"],
-            )
+            ).fetchone()
 
-            last_week_row = get_data_last_row(
-                _week_tbname,
-                stable="bars",
-                fields=["dt", "open", "high", "low", "close", "volume", "amount"],
-            )
-            if (
-                last_week_row is not None
-                and last_row["dt"].isocalendar()[1]
-                == last_week_row["dt"].isocalendar()[1]
-            ):
-                tdengine.drop_row(
-                    _week_tbname,
-                    last_week_row["dt"] - timedelta(hours=8),
-                    stable="bars",
+            try:
+                last_week_row = get_data_last_row(
+                    "bars_stock",
+                    duckdb.get_tbname(_week_tbname),
+                    fields=["dt", "open", "high", "low", "close", "volume", "amount"],
+                ).fetchone()
+                _update_week_row = (
+                    last_row[0].isocalendar()[1] == last_week_row[0].isocalendar()[1]
                 )
-                tdengine.drop_row(_week_tbname, last_week_row["dt"], stable="bars")
-                last_week_row["dt"] = last_row["dt"]
-                last_week_row["high"] = max(last_week_row["high"], last_row["high"])
-                last_week_row["low"] = min(last_week_row["low"], last_row["low"])
-                last_week_row["close"] = last_row["close"]
-                last_week_row["volume"] += last_row["volume"]
-                last_week_row["amount"] += last_row["amount"]
+            except db.CatalogException:
+                _update_week_row = False
+            if _update_week_row:
+                if last_row[0] > last_week_row[0]:
+                    new_values = {
+                        "dt": last_row[0],
+                        "high": max(last_week_row[2], last_row[2]),
+                        "low": min(last_week_row[3], last_row[3]),
+                        "close": last_row[4],
+                        "volume": last_week_row[5] + last_row[5],
+                        "amount": last_week_row[6] + last_row[6],
+                    }
+                    duckdb.update(last_week_row[0], new_values, _week_tbname, "bars_stock")
             else:
-                last_week_row = copy.copy(last_row)
-            last_week_row["tablename"] = _week_tbname
-            week_insert_datas.append(last_week_row)
+                duckdb.insert_one(last_row, _week_tbname, "bars_stock")
 
-            last_month_row = get_data_last_row(
-                _month_tbname,
-                stable="bars",
-                fields=["dt", "open", "high", "low", "close", "volume", "amount"],
-            )
-            if (
-                last_month_row is not None
-                and last_row["dt"].month == last_month_row["dt"].month
-            ):
-                tdengine.drop_row(
-                    _month_tbname,
-                    last_month_row["dt"] - timedelta(hours=8),
-                    stable="bars",
-                )
-                tdengine.drop_row(_month_tbname, last_month_row["dt"], stable="bars")
-                last_month_row["dt"] = last_row["dt"]
-                last_month_row["high"] = max(last_month_row["high"], last_row["high"])
-                last_month_row["low"] = min(last_month_row["low"], last_row["low"])
-                last_month_row["close"] = last_row["close"]
-                last_month_row["volume"] += last_row["volume"]
-                last_month_row["amount"] += last_row["amount"]
+            try:
+                last_month_row = get_data_last_row(
+                    "bars_stock",
+                    duckdb.get_tbname(_month_tbname),
+                    fields=["dt", "open", "high", "low", "close", "volume", "amount"],
+                ).fetchone()
+                _update_month_row = last_row[0].month == last_month_row[0].month
+            except db.CatalogException:
+                _update_month_row = False
+            if _update_month_row:
+                if last_row[0] > last_month_row[0]:
+                    new_values = {
+                        "dt": last_row[0],
+                        "high": max(last_month_row[2], last_row[2]),
+                        "low": min(last_month_row[3], last_row[3]),
+                        "close": last_row[4],
+                        "volume": last_month_row[5] + last_row[5],
+                        "amount": last_month_row[6] + last_row[6],
+                    }
+                    duckdb.update(
+                        last_month_row[0], new_values, _month_tbname, "bars_stock"
+                    )
             else:
-                last_month_row = copy.copy(last_row)
-            last_month_row["tablename"] = _month_tbname
-            month_insert_datas.append(last_month_row)
-
-    for _datas in [week_insert_datas, month_insert_datas]:
-        _df = pd.DataFrame(_datas)
-        if _df.empty:
-            continue
-        _df = _df.astype(
-            {
-                "open": "float32",
-                "high": "float32",
-                "low": "float32",
-                "close": "float32",
-                "volume": "int64",
-                "amount": "float64",
-            }
-        )
-        tdengine.insert_multi_tables(_df, "bars")
+                duckdb.insert_one(last_row, _month_tbname, "bars_stock")
     logging.info("前复权周线、月线导入完毕")
 
 
-def calc_all_bars_stock_week_and_month_and_import_to_tdengine(
-    adjust_factors_collection,
+def calc_all_bars_stock_week_and_month_and_import_to_duckdb(
+    adjust_factors_collection, all_symbols
 ):
-    from quantdatasource.dbimport import tdengine
+    from quantdatasource.dbimport import duckdb
 
-    # 当更新日线完成之后，将通过日线生成日线、周线和月线 (前复权)
-    for symbol in get_all_symbols():
+    # 当更新日线完成之后，将通过日线生成周线和月线 (前复权)
+    for symbol in all_symbols:
         _week_tbname = symbol + "_w"
         _month_tbname = symbol + "_mon"
         # 删除之前的表
         logging.info(f"{symbol} 重新计算前复权日线、周线、月线")
-        _d = get_data(
-            symbol,
-            stable="bars_stock_daily",
-            fields=["dt", "open", "high", "low", "close", "volume", "amount"],
-            use_df=True,
-        )
+        _d = get_data_df("bars_stock_daily", duckdb.get_tbname(symbol))
         if _d.empty:
             continue
         adjs = adjust_factors_collection.find(
@@ -439,27 +387,19 @@ def calc_all_bars_stock_week_and_month_and_import_to_tdengine(
             adj_df = adj_df.rename(columns={"tradedate": "dt"})
             adj_df["dt"] = adj_df["dt"].dt.tz_localize("UTC")
             _d = pd.merge_ordered(left=_d, right=adj_df, on="dt", how="left")
-            _d["adjust_factor"] = _d["adjust_factor"].fillna(method="ffill")
-            _d["open"] = _d["open"] * _d["adjust_factor"]
-            _d["high"] = _d["high"] * _d["adjust_factor"]
-            _d["low"] = _d["low"] * _d["adjust_factor"]
-            _d["close"] = _d["close"] * _d["adjust_factor"]
+            _d["adjust_factor"].fillna(method="ffill", inplace=True)
+            _d["open"] = _d["_open"] * _d["adjust_factor"]
+            _d["high"] = _d["_high"] * _d["adjust_factor"]
+            _d["low"] = _d["_low"] * _d["adjust_factor"]
+            _d["close"] = _d["_close"] * _d["adjust_factor"]
+            _d.drop(columns=["adjust_factor"], inplace=True)
         _week_df = _daily_to_week(_d)
         _month_df = _daily_to_month(_d)
-        tbnames = [_week_tbname, _month_tbname]
-        tdengine.drop_tables(tbnames, "bars")
-        tdengine.create_child_tables(
-            [tdengine.get_tbname(tbname, stable="bars") for tbname in tbnames],
-            "bars",
-            [(symbol, "1D"), (symbol, "w"), (symbol, "mon")],
-        )
-        tdengine.insert(_week_df, _week_tbname, stable="bars")
-        tdengine.insert(_month_df, _month_tbname, stable="bars")
-        daily_df = _d[["dt", "open", "high", "low", "close"]]
-        daily_df = daily_df.rename(
-            columns={"open": "open_", "high": "high_", "low": "low_", "close": "close_"}
-        )
-        tdengine.insert(daily_df, symbol, stable="bars_stock_daily", whole_df=False)
+        duckdb.create_or_replace_table(_week_df, _week_tbname, "bars_stock")
+        logging.info(f"-- 重新导入 {symbol} 周线完毕")
+        duckdb.create_or_replace_table(_month_df, _month_tbname, "bars_stock")
+        logging.info(f"-- 重新导入 {symbol} 月线完毕")
+        duckdb.create_or_replace_table(_d, symbol, "bars_stock_daily")
         logging.info(f"-- 重新导入 {symbol} 日线前复权价格完毕")
         adjs.close()
     logging.info("前复权周线、月线导入完毕")

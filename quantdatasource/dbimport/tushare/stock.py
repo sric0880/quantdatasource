@@ -1,9 +1,11 @@
 import logging
 from collections import defaultdict
 
+import duckdb as db
 import numpy as np
 import pandas as pd
-from quantdata.databases._tdengine import get_data
+from quantcalendar import timestamp_us
+from quantdata import get_data_last_row
 
 from quantdatasource.dbimport.tushare.stock_utils import maxupordown_status
 
@@ -45,28 +47,6 @@ def addition_read_stock_daily_bars(
     _lb_counts = defaultdict(int)
     all_datas = []
     dr_symbols = []
-    # to_create_symbols = td_db.not_exist_symbols(
-    #     conn, df["ts_code"].to_list(), "bars_stock_daily"
-    # )
-    # logging.info(f"需要新建的表：{to_create_symbols}")
-    # td_db.create_child_tables(
-    #     conn,
-    #     [td_db.get_tbname(tb, stable="bars_stock_daily") for tb in to_create_symbols],
-    #     "bars_stock_daily",
-    #     [(symbol,) for symbol in to_create_symbols],
-    # )
-    # td_db.create_child_tables(
-    #     conn,
-    #     [td_db.get_tbname(f"{tb}_w", stable="bars") for tb in to_create_symbols],
-    #     "bars",
-    #     [(symbol, "w") for symbol in to_create_symbols],
-    # )
-    # td_db.create_child_tables(
-    #     conn,
-    #     [td_db.get_tbname(f"{tb}_mon", stable="bars") for tb in to_create_symbols],
-    #     "bars",
-    #     [(symbol, "mon") for symbol in to_create_symbols],
-    # )
     for row in df.itertuples():
         symbol = row.ts_code
         if row.open == 0 or row.high == 0 or row.low == 0 or row.close == 0:
@@ -81,10 +61,14 @@ def addition_read_stock_daily_bars(
         if np.isnan(mkt_cap) or mkt_cap == 0:
             logging.error(f"{symbol} stock_daily.csv 下载中的市值数据为空，跳过")
             continue
-        with mongo_finance_db["finance_income_q"].find(
-            {"$and": [{"ts_code": symbol}, {"ann_date": {"$lte": dt}}]},
-            projection={"end_date": 1, "f_ann_date": 1, "n_income_attr_p": 1},
-        ).sort([("end_date", -1), ("f_ann_date", -1)]) as income_docs:
+        with (
+            mongo_finance_db["finance_income_q"]
+            .find(
+                {"$and": [{"ts_code": symbol}, {"ann_date": {"$lte": dt}}]},
+                projection={"end_date": 1, "f_ann_date": 1, "n_income_attr_p": 1},
+            )
+            .sort([("end_date", -1), ("f_ann_date", -1)]) as income_docs
+        ):
             _end_date = None
             n_income_attr_ps = []
             for income_doc in income_docs:
@@ -104,15 +88,20 @@ def addition_read_stock_daily_bars(
                 net_profit_q = 0
                 net_profit_ttm = 0
 
-        with mongo_finance_db["finance_balancesheet"].find(
-            {"$and": [{"ts_code": symbol}, {"ann_date": {"$lte": dt}}]},
-            projection={
-                "end_date": 1,
-                "total_hldr_eqy_inc_min_int": 1,
-                "total_assets": 1,
-                "total_liab": 1,
-            },
-        ).sort([("end_date", -1)]).limit(1) as blc_docs:
+        with (
+            mongo_finance_db["finance_balancesheet"]
+            .find(
+                {"$and": [{"ts_code": symbol}, {"ann_date": {"$lte": dt}}]},
+                projection={
+                    "end_date": 1,
+                    "total_hldr_eqy_inc_min_int": 1,
+                    "total_assets": 1,
+                    "total_liab": 1,
+                },
+            )
+            .sort([("end_date", -1)])
+            .limit(1) as blc_docs
+        ):
             try:
                 blc_doc = blc_docs.next()
                 equity = blc_doc.get("total_hldr_eqy_inc_min_int", 0)
@@ -130,10 +119,14 @@ def addition_read_stock_daily_bars(
                 debt = 0
                 debttoasset = 0
 
-        with mongo_finance_db["finance_cashflow_q"].find(
-            {"$and": [{"ts_code": symbol}, {"ann_date": {"$lte": dt}}]},
-            projection={"end_date": 1, "f_ann_date": 1, "n_cashflow_act": 1},
-        ).sort([("end_date", -1), ("f_ann_date", -1)]) as cf_docs:
+        with (
+            mongo_finance_db["finance_cashflow_q"]
+            .find(
+                {"$and": [{"ts_code": symbol}, {"ann_date": {"$lte": dt}}]},
+                projection={"end_date": 1, "f_ann_date": 1, "n_cashflow_act": 1},
+            )
+            .sort([("end_date", -1), ("f_ann_date", -1)]) as cf_docs
+        ):
             _end_date = None
             n_cashflow_act = []
             for cf_doc in cf_docs:
@@ -157,10 +150,10 @@ def addition_read_stock_daily_bars(
             "tablename": symbol,
             "dt": today,
             "name": stockname,
-            "open": row.open,
-            "high": row.high,
-            "low": row.low,
-            "close": row.close,
+            "_open": row.open,
+            "_high": row.high,
+            "_low": row.low,
+            "_close": row.close,
             "preclose": row.pre_close,
             "volume": row.vol * 100,
             "amount": row.amount * 1000,
@@ -189,10 +182,10 @@ def addition_read_stock_daily_bars(
             "maxupordown": 0,
             "lb_up_count": 0,
             "lb_down_count": 0,
-            "close_": row.close,
-            "open_": row.open,
-            "high_": row.high,
-            "low_": row.low,
+            "close": row.close,
+            "open": row.open,
+            "high": row.high,
+            "low": row.low,
         }
         maxupordown = row.limit_status
         if pd.isna(maxupordown):
@@ -239,27 +232,25 @@ def addition_read_stock_daily_bars(
             symbol, row.open, new_kline
         )
 
-        last_row = get_data(
-            symbol,
-            stable="bars_stock_daily",
-            fields=["dt", "close", "lb_up_count", "lb_down_count"],
-            till_dt=row.trade_date,
-            max_count=1,
-            use_df=False,
-            side=None,
-        )
-        # print(last_row)
-        if last_row["dt"]:
+        try:
+            last_row = get_data_last_row(
+                "bars_stock_daily",
+                f"_{symbol.replace('.', '_')}",
+                fields=["dt", "_close", "lb_up_count", "lb_down_count"],
+                till_microsec=timestamp_us(row.trade_date),
+                side=None,
+            ).fetchone()
+            _, lr_close, lr_lb_up_count, lr_lb_down_count = last_row
             if new_kline["maxupordown"] > 0:
-                new_kline["lb_up_count"] = last_row["lb_up_count"][0] + 1
+                new_kline["lb_up_count"] = lr_lb_up_count + 1
             elif new_kline["maxupordown"] < 0:
-                new_kline["lb_down_count"] = last_row["lb_down_count"][0] + 1
+                new_kline["lb_down_count"] = lr_lb_down_count + 1
 
-            if abs(last_row["close"][0] - new_kline["preclose"]) >= 0.0001:
+            if abs(lr_close - new_kline["preclose"]) >= 0.0001:
                 # 发生除权
                 dr_symbols.append(symbol)
-        else:
-            logging.debug(f"{symbol} 没有历史数据")
+        except db.CatalogException:
+            logging.info(f"{symbol} 新股，没有历史连板数据，无法获知今日是否除权")
             if new_kline["maxupordown"] > 0:
                 new_kline["lb_up_count"] = 1
             elif new_kline["maxupordown"] < 0:
@@ -284,10 +275,10 @@ def addition_read_stock_daily_bars(
     df = df.astype(
         {
             "name": "string",
-            "open": "float32",
-            "high": "float32",
-            "low": "float32",
-            "close": "float32",
+            "_open": "float32",
+            "_high": "float32",
+            "_low": "float32",
+            "_close": "float32",
             "volume": "int32",
             "amount": "int64",
             "preclose": "float32",
@@ -326,10 +317,10 @@ def addition_read_stock_daily_bars(
             "maxupordown_at_open": "int",
             "lb_up_count": "int",
             "lb_down_count": "int",
-            "close_": "float32",
-            "open_": "float32",
-            "high_": "float32",
-            "low_": "float32",
+            "close": "float32",
+            "open": "float32",
+            "high": "float32",
+            "low": "float32",
         }
     )
     logging.info(

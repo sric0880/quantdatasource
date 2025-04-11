@@ -7,7 +7,7 @@ __all__ = ["tushare_index_bars"]
 
 
 @job(
-    service_type="datasource-all",
+    service_type="datasource-astock-index",
     trigger="cron",
     id="astock_tushare_index",
     name="[TushareApi]大盘指数日/周/月线",
@@ -36,15 +36,15 @@ def tushare_index_bars(dt, is_collect, is_import):
         api.addition_download_index(index_codes)
 
     if is_import:
-        from quantdatasource.dbimport import tdengine
+        from quantdatasource.dbimport import duckdb
         from quantdatasource.dbimport.tushare import index
 
         daily = index.addition_read_index(api.index_daily_addition_path, "1D")
         weekly = index.addition_read_index(api.index_week_addition_path, "w")
         monthly = index.addition_read_index(api.index_month_addition_path, "mon")
         if daily is not None:
-            tdengine.insert_multi_tables(daily, "bars")
+            duckdb.insert_multi_tables(daily, "bars_index")
         if weekly is not None:
-            tdengine.insert_multi_tables(weekly, "bars")
+            duckdb.insert_multi_tables(weekly, "bars_index")
         if monthly is not None:
-            tdengine.insert_multi_tables(monthly, "bars")
+            duckdb.insert_multi_tables(monthly, "bars_index")
