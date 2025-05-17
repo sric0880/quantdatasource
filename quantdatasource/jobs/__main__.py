@@ -1,5 +1,6 @@
 import datetime
 import logging
+import signal
 from logging.handlers import TimedRotatingFileHandler
 
 import fire
@@ -69,6 +70,8 @@ def main(
                 return
         logging.error(f"cannot find job id {job_id}")
     else:
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
         scheduler = BlockingScheduler()
         for job in all_jobs:
             job(sched=scheduler, only_collect=only_collect)
