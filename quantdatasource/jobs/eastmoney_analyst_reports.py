@@ -27,13 +27,14 @@ def eastmoney_analyst_reports(dt, is_collect, is_import):
     if is_import:
         from quantdatasource.dbimport.eastmoney import analyst_reports
 
-        cal = get_astock_calendar()
-        mongodb.insert_many(
-            analyst_reports.addition_read_analyst_reports(
-                api.analyst_reports_addition_path, cal
-            ),
-            "finance",
-            "analyst_reports",
-            ignore_nan=True,
-            drop=False,
-        )
+        if api.analyst_reports_addition_path.exists():
+            cal = get_astock_calendar()
+            mongodb.insert_many(
+                analyst_reports.addition_read_analyst_reports(
+                    api.analyst_reports_addition_path, cal
+                ),
+                "finance",
+                "analyst_reports",
+                ignore_nan=True,
+                drop=False,
+            )
