@@ -1,8 +1,11 @@
 import logging
 
 import pandas as pd
+import warnings
 from quantcalendar import timestamp_us
 from quantdata import get_conn_duckdb
+
+warnings.simplefilter("default")
 
 create_sql_stock_daily = """
 dt TIMESTAMP_S PRIMARY KEY,
@@ -118,6 +121,7 @@ def get_tbname(tbname):
 
 
 def create_or_replace_table(df: pd.DataFrame, tablename, dbname):
+    warnings.warn("`create_or_replace_table` is deprecated because write duckdb is very slow, use `` instead.", DeprecationWarning, stacklevel=2)
     if df is None or df.empty:
         return
     conn = get_conn_duckdb()
@@ -131,6 +135,7 @@ def create_or_replace_table(df: pd.DataFrame, tablename, dbname):
 
 
 def insert_multi_tables(df: pd.DataFrame, dbname):
+    warnings.warn("`insert_multi_tables` is deprecated because write duckdb is very slow, use `save_multi_tables` instead.", DeprecationWarning, stacklevel=2)
     if df is None or df.empty:
         return
     if "tablename" not in df:
@@ -154,7 +159,19 @@ def insert_multi_tables(df: pd.DataFrame, dbname):
     logging.info(f"批量写入DuckDB[{dbname}]")
 
 
+def save_multi_tables(df: pd.DataFrame, parquet_file):
+    if df is None or df.empty:
+        return
+    if "tablename" not in df:
+        raise ValueError("Multi insert tables has no tablename")
+
+    df.to_parquet(parquet_file)
+
+    logging.info(f"写入parquet[{parquet_file}]")
+
+
 def update(dt, values, tablename, dbname):
+    warnings.warn("`update` is deprecated because write duckdb is very slow, use `` instead.", DeprecationWarning, stacklevel=2)
     conn = get_conn_duckdb()
     if "dt" in values:
         _microsec = timestamp_us(values["dt"])
@@ -169,6 +186,7 @@ def update(dt, values, tablename, dbname):
 
 
 def insert_one(row: tuple, tablename, dbname):
+    warnings.warn("`insert_one` is deprecated because write duckdb is very slow, use `` instead.", DeprecationWarning, stacklevel=2)
     conn = get_conn_duckdb()
     q = ",".join(["?"] * len(row))
     tbname = f"{dbname}.{get_tbname(tablename)}"

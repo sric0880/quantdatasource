@@ -1,17 +1,17 @@
 from contextlib import closing
 
 from quantdatasource.dbimport import mongodb
-from quantdatasource.jobs.account import *
+from quantdatasource.jobs import config
 from quantdatasource.jobs.calendar import get_ctpfuture_calendar
 from quantdatasource.jobs.scheduler import job
 
 __all__ = ["ctp_download_contracts"]
 
 
-def _download_subprocess(config):
+def _download_subprocess(account):
     from quantdatasource.api.ctp import SimpleCtpApi
 
-    api = SimpleCtpApi(config, future_output)
+    api = SimpleCtpApi(account, config.config["future_output"])
     with closing(api):
         api.full_download_contracts()
 
@@ -31,6 +31,8 @@ def ctp_download_contracts(dt, is_collect, is_import):
     if not calendar.is_trading_day(dt):
         return
 
+    ctp_accounts = config.config["ctp_accounts"]
+
     if is_collect:
         # 目前只有一个账户，不用多进程
         # from multiprocessing import Pool
@@ -48,7 +50,7 @@ def ctp_download_contracts(dt, is_collect, is_import):
         for acc in ctp_accounts:
             filename = f"contracts_{acc['BrokerID']}"
             mongodb.insert_many(
-                contracts.read_contracts(Path(future_output, f"{filename}.json")),
+                contracts.read_contracts(Path(config.config["future_output"], f"{filename}.json")),
                 "finance_ctpfuture",
                 filename,
             )

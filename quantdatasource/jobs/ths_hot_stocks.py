@@ -1,7 +1,7 @@
 # 同花顺热股榜
 from quantdatasource.api.ths import THSApi
 from quantdatasource.dbimport import mongodb
-from quantdatasource.jobs.account import *
+from quantdatasource.jobs import config
 from quantdatasource.jobs.calendar import get_astock_calendar
 from quantdatasource.jobs.scheduler import job
 
@@ -22,7 +22,7 @@ def ths_hot_stocks(dt, is_collect, is_import):
     calendar = get_astock_calendar()
     if not calendar.is_trading_day(dt):
         return
-    api = THSApi(astock_output, dt)
+    api = THSApi(config.config["astock_output"], dt)
     if is_collect:
         api.addition_download_hot_stocks()
 
