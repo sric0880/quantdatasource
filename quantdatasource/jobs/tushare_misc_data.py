@@ -1,7 +1,7 @@
 import logging
+import pathlib
 
 import pandas as pd
-from quantdata import get_data_df
 
 from quantdatasource.api.tushare import TushareApi
 from quantdatasource.dbimport import mongodb
@@ -107,7 +107,6 @@ def _mongo_import_finance_data(row, symbol, tablename):
 
 
 @job(
-    service_type="datasource-astock-daily",
     trigger="cron",
     id="astock_tushare",
     name="[TushareApi]其他",
@@ -188,15 +187,17 @@ def tushare_misc_data(dt, is_collect, is_import):
         else:
             logging.info("同花顺概念股成分没有增量改变")
 
-        duckdb.insert_multi_tables(
+        ths_index_daily_out = pathlib.Path(f"{config.config['parquet_output']}/bars_ths_index_daily")
+        ths_index_daily_out.mkdir(parents=True, exist_ok=True)
+        duckdb.save_multi_tables(
             ths_index.addition_read_concepts_bars(
                 api.ths_daily_bars_addition_path, concepts_basic_df
             ),
-            "bars_ths_index_daily",
+            ths_index_daily_out/f"{dt.date().isoformat()}.parquet",
         )
 
         chinese_names = dict(zip(stock_basic_df["symbol"], stock_basic_df["name"]))
-        daily_bars, dr_symbols, market_stats = stock.addition_read_stock_daily_bars(
+        daily_bars, market_stats = stock.addition_read_stock_daily_bars(
             dt,
             api.daily_bars_addition_path,
             api.daily_basic_addition_path,
@@ -204,25 +205,28 @@ def tushare_misc_data(dt, is_collect, is_import):
             chinese_names,
             conn["finance"],
         )
-        all_symbols = daily_bars["tablename"].to_list()
-        duckdb.insert_multi_tables(daily_bars, "bars_stock_daily")
+        stock_daily_out = pathlib.Path(f"{config.config['parquet_output']}/bars_stock_daily")
+        stock_daily_out.mkdir(parents=True, exist_ok=True)
+        duckdb.save_multi_tables(daily_bars, stock_daily_out/f"{dt.date().isoformat()}.parquet")
 
-        adjust_factors_collection = conn["finance"]["adjust_factors"]
-        for symbol in dr_symbols:
-            close_df = get_data_df(
-                "bars_stock_daily",
-                duckdb.get_tbname("_" + symbol),
-                fields=["dt", "_close", "preclose"],
-            )
-            adj_df = stock_utils.cal_adjust_factors(symbol, close_df)
-            adjust_factors_collection.delete_many({"symbol": symbol})
-            adjust_factors_collection.insert_many(adj_df.to_dict(orient="records"))
         market_stats_collection = conn["finance"]["market_stats"]
         market_stats_collection.insert_one(market_stats)
         logging.info(f"写入MongoDB[finance][market_stats]")
-        stock_utils.calc_bars_stock_week_and_month_and_import_to_duckdb(
-            adjust_factors_collection, all_symbols, dr_symbols
-        )
+
+        # adjust_factors_collection = conn["finance"]["adjust_factors"]
+        # for symbol in dr_symbols:
+        #     close_df = get_data_df(
+        #         "bars_stock_daily",
+        #         duckdb.get_tbname("_" + symbol),
+        #         fields=["dt", "_close", "preclose"],
+        #     )
+        #     adj_df = stock_utils.cal_adjust_factors(symbol, close_df)
+        #     adjust_factors_collection.delete_many({"symbol": symbol})
+        #     adjust_factors_collection.insert_many(adj_df.to_dict(orient="records"))
+        # all_symbols = daily_bars["symbol"].to_list()
+        # stock_utils.calc_bars_stock_week_and_month_and_import_to_duckdb(
+        #     adjust_factors_collection, all_symbols, dr_symbols
+        # )
 
         lhb_collection = conn["finance"]["lhb"]
         lhb_collection.insert_many(
@@ -240,7 +244,6 @@ def tushare_misc_data(dt, is_collect, is_import):
 
 
 @job(
-    service_type="datasource-astock-daily",
     id="astock_tushare_daily_fillup",
     name="[TushareApi]补全历史A股日线[Only Import](未测试)",
 )
@@ -276,7 +279,7 @@ def tushare_daily_bars(dt, is_collect, is_import):
         adjust_factors_collection.delete_many({"symbol": symbol})
         adjust_factors_collection.insert_many(adj_df.to_dict(orient="records"))
 
-    all_symbols = daily_bars["tablename"].to_list()
+    all_symbols = daily_bars["symbol"].to_list()
     stock_utils.calc_all_bars_stock_week_and_month_and_import_to_duckdb(
         adjust_factors_collection, all_symbols
     )

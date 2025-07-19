@@ -129,11 +129,11 @@ def addition_read_concepts_bars(csv, concepts_basic_df):
     df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
     df = df.reset_index(drop=True)
     df = df.rename(
-        columns={"trade_date": "dt", "vol": "volume", "ts_code": "tablename"}
+        columns={"trade_date": "dt", "vol": "volume", "ts_code": "symbol"}
     )
     df = df.fillna(0)
     df = df.astype({"volume": "int64"})
     # tags_lst = list(zip(df['ts_code'], periodname))
     df = df.drop(columns=["pre_close"])
-    df = df.loc[df["tablename"].isin(concepts_basic_df["symbol"])]
+    df = df.loc[df["symbol"].isin(concepts_basic_df["symbol"])]
     return df

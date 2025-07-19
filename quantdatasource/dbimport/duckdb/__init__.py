@@ -162,8 +162,8 @@ def insert_multi_tables(df: pd.DataFrame, dbname):
 def save_multi_tables(df: pd.DataFrame, parquet_file):
     if df is None or df.empty:
         return
-    if "tablename" not in df:
-        raise ValueError("Multi insert tables has no tablename")
+    if "symbol" not in df:
+        raise ValueError("Multi insert tables has no symbol")
 
     df.to_parquet(parquet_file)
 

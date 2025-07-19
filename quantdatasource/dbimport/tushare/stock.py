@@ -5,7 +5,6 @@ import duckdb as db
 import numpy as np
 import pandas as pd
 from quantcalendar import timestamp_us
-from quantdata import get_data_last_row
 
 from quantdatasource.dbimport.tushare.stock_utils import maxupordown_status
 
@@ -44,9 +43,7 @@ def addition_read_stock_daily_bars(
     count_of_downlimit = 0
     count_of_yiziup = 0
     count_of_yizidown = 0
-    _lb_counts = defaultdict(int)
     all_datas = []
-    dr_symbols = []
     for row in df.itertuples():
         symbol = row.ts_code
         if row.open == 0 or row.high == 0 or row.low == 0 or row.close == 0:
@@ -147,7 +144,7 @@ def addition_read_stock_daily_bars(
                 f"新股：{symbol} 在stock_basic中不存在，但是已经有日线了，需要手动更新股名"
             )
         new_kline = {
-            "tablename": symbol,
+            "symbol": symbol,
             "dt": today,
             "name": stockname,
             "_open": row.open,
@@ -232,30 +229,6 @@ def addition_read_stock_daily_bars(
             symbol, row.open, new_kline
         )
 
-        if new_kline["maxupordown"] > 0:
-            new_kline["lb_up_count"] = 1
-        elif new_kline["maxupordown"] < 0:
-            new_kline["lb_down_count"] = 1
-        try:
-            last_row = get_data_last_row(
-                "bars_stock_daily",
-                f"_{symbol.replace('.', '_')}",
-                fields=["dt", "_close", "lb_up_count", "lb_down_count"],
-                till_microsec=timestamp_us(row.trade_date),
-                side=None,
-            ).fetchone()
-            if last_row is not None:
-                _, lr_close, lr_lb_up_count, lr_lb_down_count = last_row
-                if new_kline["maxupordown"] > 0:
-                    new_kline["lb_up_count"] = lr_lb_up_count + 1
-                elif new_kline["maxupordown"] < 0:
-                    new_kline["lb_down_count"] = lr_lb_down_count + 1
-                if abs(lr_close - new_kline["preclose"]) >= 0.0001:
-                    # 发生除权
-                    dr_symbols.append(symbol)
-        except db.CatalogException:
-            logging.info(f"{symbol} 新股，没有历史连板数据，无法获知今日是否除权")
-
         all_datas.append(new_kline)
 
         if "ST" not in stockname and not "退" in stockname:
@@ -268,9 +241,7 @@ def addition_read_stock_daily_bars(
                 count_of_yiziup += 1
             elif maxupordown == -2:
                 count_of_yizidown += 1
-            _lb_counts[new_kline["lb_up_count"]] += 1
 
-    logging.info(f"  发生除权的股票有: {dr_symbols}")
     df = pd.DataFrame(all_datas)
     df = df.astype(
         {
@@ -342,7 +313,5 @@ def addition_read_stock_daily_bars(
         "ratio_of_yiziup": ratio_of_yiziup,
         "ratio_of_yizidown": ratio_of_yizidown,
     }
-    for i in range(1, 13):
-        market_stats[f"lb{i}"] = _lb_counts.get(i, 0)
 
-    return (df, dr_symbols, market_stats)
+    return (df, market_stats)

@@ -6,7 +6,6 @@ from decimal import ROUND_HALF_UP, Decimal
 import duckdb as db
 import numpy as np
 import pandas as pd
-from quantdata import get_data_df, get_data_last_row
 
 
 def my_round(a):

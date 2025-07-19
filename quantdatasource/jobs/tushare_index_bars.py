@@ -1,3 +1,5 @@
+import pathlib
+
 from quantdatasource.api.tushare import TushareApi
 from quantdatasource.jobs import config
 from quantdatasource.jobs.calendar import get_astock_calendar
@@ -7,7 +9,6 @@ __all__ = ["tushare_index_bars"]
 
 
 @job(
-    service_type="datasource-astock-index",
     trigger="cron",
     id="astock_tushare_index",
     name="[TushareApi]大盘指数日/周/月线",
@@ -42,9 +43,17 @@ def tushare_index_bars(dt, is_collect, is_import):
         daily = index.addition_read_index(api.index_daily_addition_path, "1D")
         weekly = index.addition_read_index(api.index_week_addition_path, "w")
         monthly = index.addition_read_index(api.index_month_addition_path, "mon")
+        parquet_output = pathlib.Path(f"{config.config['parquet_output']}/bars_index")
+        parquet_output.mkdir(parents=True, exist_ok=True)
         if daily is not None:
-            duckdb.insert_multi_tables(daily, "bars_index")
+            daily_path = parquet_output/"daily"
+            daily_path.mkdir(parents=True, exist_ok=True)
+            duckdb.save_multi_tables(daily, daily_path/f"{dt.date().isoformat()}.parquet")
         if weekly is not None:
-            duckdb.insert_multi_tables(weekly, "bars_index")
+            daily_path = parquet_output/"weekly"
+            daily_path.mkdir(parents=True, exist_ok=True)
+            duckdb.save_multi_tables(weekly, daily_path/f"{dt.date().isoformat()}.parquet")
         if monthly is not None:
-            duckdb.insert_multi_tables(monthly, "bars_index")
+            daily_path = parquet_output/"monthly"
+            daily_path.mkdir(parents=True, exist_ok=True)
+            duckdb.save_multi_tables(monthly, daily_path/f"{dt.date().isoformat()}.parquet")
