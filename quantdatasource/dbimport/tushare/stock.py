@@ -232,6 +232,10 @@ def addition_read_stock_daily_bars(
             symbol, row.open, new_kline
         )
 
+        if new_kline["maxupordown"] > 0:
+            new_kline["lb_up_count"] = 1
+        elif new_kline["maxupordown"] < 0:
+            new_kline["lb_down_count"] = 1
         try:
             last_row = get_data_last_row(
                 "bars_stock_daily",
@@ -240,21 +244,17 @@ def addition_read_stock_daily_bars(
                 till_microsec=timestamp_us(row.trade_date),
                 side=None,
             ).fetchone()
-            _, lr_close, lr_lb_up_count, lr_lb_down_count = last_row
-            if new_kline["maxupordown"] > 0:
-                new_kline["lb_up_count"] = lr_lb_up_count + 1
-            elif new_kline["maxupordown"] < 0:
-                new_kline["lb_down_count"] = lr_lb_down_count + 1
-
-            if abs(lr_close - new_kline["preclose"]) >= 0.0001:
-                # 发生除权
-                dr_symbols.append(symbol)
+            if last_row is not None:
+                _, lr_close, lr_lb_up_count, lr_lb_down_count = last_row
+                if new_kline["maxupordown"] > 0:
+                    new_kline["lb_up_count"] = lr_lb_up_count + 1
+                elif new_kline["maxupordown"] < 0:
+                    new_kline["lb_down_count"] = lr_lb_down_count + 1
+                if abs(lr_close - new_kline["preclose"]) >= 0.0001:
+                    # 发生除权
+                    dr_symbols.append(symbol)
         except db.CatalogException:
             logging.info(f"{symbol} 新股，没有历史连板数据，无法获知今日是否除权")
-            if new_kline["maxupordown"] > 0:
-                new_kline["lb_up_count"] = 1
-            elif new_kline["maxupordown"] < 0:
-                new_kline["lb_down_count"] = 1
 
         all_datas.append(new_kline)
 
