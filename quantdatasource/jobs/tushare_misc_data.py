@@ -225,10 +225,12 @@ def tushare_misc_data(dt, is_collect, is_import):
         )
 
         lhb_collection = conn["finance"]["lhb"]
-        lhb_collection.insert_many(
-            lhb.addition_read_lhb(api.lhb_addition_path, api.lhb_inst_addition_path)
-        )
-        logging.info(f"写入MongoDB[finance][lhb]")
+        lhb_data = lhb.addition_read_lhb(api.lhb_addition_path, api.lhb_inst_addition_path)
+        if lhb_data:
+            lhb_collection.insert_many(lhb_data)
+            logging.info(f"写入MongoDB[finance][lhb]")
+        else:
+            logging.error(f"写入MongoDB[finance][lhb]为空")
 
         cb_basic_df = cb.read_basic(api.basic_cb_path)
         mongodb.insert_many(
