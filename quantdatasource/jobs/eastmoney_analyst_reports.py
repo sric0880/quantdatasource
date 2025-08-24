@@ -1,6 +1,6 @@
 from quantdatasource.api.eastmoney import EastMoneyApi
 from quantdatasource.dbimport import mongodb
-from quantdatasource.jobs.account import *
+from quantdatasource.jobs import account
 from quantdatasource.jobs.calendar import get_astock_calendar
 from quantdatasource.jobs.scheduler import job
 
@@ -20,7 +20,7 @@ __all__ = ["eastmoney_analyst_reports"]
     misfire_grace_time=1,
 )
 def eastmoney_analyst_reports(dt, is_collect, is_import):
-    api = EastMoneyApi(astock_output, dt)
+    api = EastMoneyApi(account.astock_output, dt)
     if is_collect:
         api.addition_download_analyst_reports()
 

@@ -1,7 +1,7 @@
 from contextlib import closing
 
 from quantdatasource.dbimport import mongodb
-from quantdatasource.jobs.account import *
+from quantdatasource.jobs import account
 from quantdatasource.jobs.calendar import get_ctpfuture_calendar
 from quantdatasource.jobs.scheduler import job
 
@@ -16,7 +16,7 @@ __all__ = ["tqsdk_calc_adj_factors"]
 def tqsdk_calc_adj_factors(dt, is_collect, is_import):
     from quantdatasource.api.tqsdk import TQSDKApi
 
-    api = TQSDKApi(tq_username, tq_psw, future_output, dt)
+    api = TQSDKApi(account.tq_username, account.tq_psw, account.future_output, dt)
     with closing(api):
         if is_collect:
             api.full_download_future_cont_list()

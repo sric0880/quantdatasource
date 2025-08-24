@@ -1,5 +1,5 @@
 from quantdatasource.api.tushare import TushareApi
-from quantdatasource.jobs.account import *
+from quantdatasource.jobs import account
 from quantdatasource.jobs.calendar import get_astock_calendar
 from quantdatasource.jobs.scheduler import job
 
@@ -20,7 +20,7 @@ def tushare_index_bars(dt, is_collect, is_import):
     calendar = get_astock_calendar()
     if not calendar.is_trading_day(dt):
         return
-    api = TushareApi(tushare_token, astock_output, dt)
+    api = TushareApi(account.tushare_token, account.astock_output, dt)
 
     index_codes = [
         ("000016.SH", "2004-01-01"),

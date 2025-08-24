@@ -5,7 +5,7 @@ from quantdata import get_data_df
 
 from quantdatasource.api.tushare import TushareApi
 from quantdatasource.dbimport import mongodb
-from quantdatasource.jobs.account import *
+from quantdatasource.jobs import account
 from quantdatasource.jobs.calendar import get_astock_calendar
 from quantdatasource.jobs.scheduler import job
 
@@ -117,7 +117,7 @@ def _mongo_import_finance_data(row, symbol, tablename):
     misfire_grace_time=200,
 )
 def tushare_misc_data(dt, is_collect, is_import):
-    api = TushareApi(tushare_token, astock_output, dt)
+    api = TushareApi(account.tushare_token, account.astock_output, dt)
     if is_collect:
         api.addition_download_finance_data()
 
@@ -247,7 +247,7 @@ def tushare_misc_data(dt, is_collect, is_import):
     name="[TushareApi]补全历史A股日线[Only Import](未测试)",
 )
 def tushare_daily_bars(dt, is_collect, is_import):
-    api = TushareApi(tushare_token, astock_output, dt)
+    api = TushareApi(account.tushare_token, account.astock_output, dt)
 
     from quantdatasource.dbimport import duckdb
     from quantdatasource.dbimport.tushare import stock, stock_utils

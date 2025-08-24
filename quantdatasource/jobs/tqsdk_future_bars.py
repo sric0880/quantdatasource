@@ -2,7 +2,7 @@ import logging
 from contextlib import closing
 
 from quantdatasource.api.tushare import TushareFutureApi
-from quantdatasource.jobs.account import *
+from quantdatasource.jobs import account
 from quantdatasource.jobs.scheduler import job
 
 __all__ = ["tqsdk_future_bars"]
@@ -14,12 +14,12 @@ __all__ = ["tqsdk_future_bars"]
     name="[TQSDKApi|TushareFutureApi]更新期货K线数据(未测试)",
 )
 def tqsdk_future_bars(dt, is_collect, is_import):
-    tushare_api = TushareFutureApi(tushare_token, future_output, dt)
+    tushare_api = TushareFutureApi(account.tushare_token, account.future_output, dt)
     if is_collect:
         tushare_api.full_download_all_future_bars()
     from quantdatasource.api.tqsdk import TQSDKApi
 
-    api = TQSDKApi(tq_username, tq_psw, future_output, dt)
+    api = TQSDKApi(account.tq_username, account.tq_psw, account.future_output, dt)
     with closing(api):
         if is_collect:
             api.full_download_bars()

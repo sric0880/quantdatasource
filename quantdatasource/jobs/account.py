@@ -10,16 +10,15 @@ tushare_token = ""
 tq_username = ""
 tq_psw = ""
 
-ctp_accounts = [
-    {
-        "uname": "",
-        "uid": "",
-        "UserID": "",
-        "BrokerID": "",
-        "AppID": "",
-        "AuthCode": "",
-        "Password": "",
-        "Name": "",
-        "FrontAddresses": [],
-    },
-]
+ctp_accounts = []
+
+if config is None:
+    with open("quantdatasource_config.yml", "r") as f:
+        config = yaml.safe_load(f)
+        astock_output = config["astock_output"]
+        future_output = config["future_output"]
+        tushare_token = config["tushare_token"]
+        tq_username = config["tq_username"]
+        tq_psw = config["tq_psw"]
+        ctp_accounts = config["ctp_accounts"]
+        print(config)
