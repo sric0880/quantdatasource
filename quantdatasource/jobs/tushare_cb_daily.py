@@ -1,7 +1,7 @@
 import pathlib
 
 from quantdatasource.api.tushare import TushareApi
-from quantdatasource.jobs import config
+from quantdatasource.jobs import account
 from quantdatasource.jobs.calendar import get_astock_calendar
 from quantdatasource.jobs.scheduler import job
 
@@ -21,7 +21,7 @@ def tushare_cb_daily(dt, is_collect, is_import):
     calendar = get_astock_calendar()
     if not calendar.is_trading_day(dt):
         return
-    api = TushareApi(config.config["tushare_token"], config.config["astock_output"], dt)
+    api = TushareApi(account.tushare_token, account.astock_output, dt)
     if is_collect:
         api.addition_download_cb_daily()
 

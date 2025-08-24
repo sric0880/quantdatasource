@@ -1,7 +1,7 @@
 from contextlib import closing
 
 from quantdatasource.dbimport import mongodb
-from quantdatasource.jobs import config
+from quantdatasource.jobs import account
 from quantdatasource.jobs.calendar import get_ctpfuture_calendar
 from quantdatasource.jobs.scheduler import job
 
@@ -24,7 +24,7 @@ def tqsdk_future_basic(dt, is_collect, is_import):
         return
     from quantdatasource.api.tqsdk import TQSDKApi
 
-    api = TQSDKApi(config.config["tq_username"], config.config["tq_psw"], config.config["future_output"], dt)
+    api = TQSDKApi(account.tq_username, account.tq_psw, account.future_output, dt)
     with closing(api):
         if is_collect:
             api.full_download_future_basic()

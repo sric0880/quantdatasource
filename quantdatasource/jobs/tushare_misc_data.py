@@ -5,7 +5,7 @@ import pandas as pd
 
 from quantdatasource.api.tushare import TushareApi
 from quantdatasource.dbimport import mongodb
-from quantdatasource.jobs import config
+from quantdatasource.jobs import account
 from quantdatasource.jobs.calendar import get_astock_calendar
 from quantdatasource.jobs.scheduler import job
 
@@ -116,7 +116,7 @@ def _mongo_import_finance_data(row, symbol, tablename):
     misfire_grace_time=200,
 )
 def tushare_misc_data(dt, is_collect, is_import):
-    api = TushareApi(config.config["tushare_token"], config.config["astock_output"], dt)
+    api = TushareApi(account.tushare_token, account.astock_output, dt)
     if is_collect:
         api.addition_download_finance_data()
 
@@ -229,10 +229,12 @@ def tushare_misc_data(dt, is_collect, is_import):
         # )
 
         lhb_collection = conn["finance"]["lhb"]
-        lhb_collection.insert_many(
-            lhb.addition_read_lhb(api.lhb_addition_path, api.lhb_inst_addition_path)
-        )
-        logging.info(f"写入MongoDB[finance][lhb]")
+        lhb_data = lhb.addition_read_lhb(api.lhb_addition_path, api.lhb_inst_addition_path)
+        if lhb_data:
+            lhb_collection.insert_many(lhb_data)
+            logging.info(f"写入MongoDB[finance][lhb]")
+        else:
+            logging.error(f"写入MongoDB[finance][lhb]为空")
 
         cb_basic_df = cb.read_basic(api.basic_cb_path)
         mongodb.insert_many(
@@ -248,7 +250,7 @@ def tushare_misc_data(dt, is_collect, is_import):
     name="[TushareApi]补全历史A股日线[Only Import](未测试)",
 )
 def tushare_daily_bars(dt, is_collect, is_import):
-    api = TushareApi(config.config["tushare_token"], config.config["astock_output"], dt)
+    api = TushareApi(account.tushare_token, account.astock_output, dt)
 
     from quantdatasource.dbimport import duckdb
     from quantdatasource.dbimport.tushare import stock, stock_utils

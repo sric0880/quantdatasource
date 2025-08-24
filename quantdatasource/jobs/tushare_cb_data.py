@@ -5,7 +5,7 @@ import pandas as pd
 from quantdata import mongo_get_data
 
 from quantdatasource.api.tushare import TushareApi
-from quantdatasource.jobs import config
+from quantdatasource.jobs import account
 from quantdatasource.jobs.scheduler import job
 
 __all__ = ["tushare_cb_data"]
@@ -22,7 +22,7 @@ __all__ = ["tushare_cb_data"]
     misfire_grace_time=200,
 )
 def tushare_cb_data(dt, is_collect, is_import):
-    api = TushareApi(config.config["tushare_token"], config.config["astock_output"], dt)
+    api = TushareApi(account.tushare_token, account.astock_output, dt)
     if is_collect:
         api.full_download_cb_share_data(include_delist_cbs=False, force_replace=True)
         api.full_download_cb_call_data(include_delist_cbs=False, force_replace=True)
