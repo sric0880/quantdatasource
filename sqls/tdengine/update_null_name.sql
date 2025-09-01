@@ -1,1 +1,0 @@
-insert into bars_stock_daily_301141_sz (dt,name) values ('2023-04-03 08:00:00.000','N中科磁');
