@@ -1,6 +1,5 @@
 import logging
 
-import duckdb as db
 import pandas as pd
 from quantdata import mongo_get_data
 
@@ -22,13 +21,12 @@ __all__ = ["tushare_cb_data"]
     misfire_grace_time=200,
 )
 def tushare_cb_data(dt, is_collect, is_import):
-    api = TushareApi(account.tushare_token, account.astock_output, dt)
+    api = TushareApi(account.tushare_token, account.raw_astock_output, dt)
     if is_collect:
         api.full_download_cb_share_data(include_delist_cbs=False, force_replace=True)
         api.full_download_cb_call_data(include_delist_cbs=False, force_replace=True)
 
     if is_import:
-        from quantdatasource.dbimport import duckdb
         from quantdatasource.dbimport.tushare import cb
 
         dfs = []
@@ -42,6 +40,6 @@ def tushare_cb_data(dt, is_collect, is_import):
                 dfs.append(df)
 
         big_df = pd.concat(dfs)
-        parquet_file = f"{config.config['parquet_output']}/bars_cb_data.parquet"
-        big_df.to_parquet(parquet_file)
-        logging.info(f"写入parquet[{parquet_file}]")
+        file_path = f"{account.astock_output}/bars_cb_data.feather"
+        big_df.to_feather(file_path)
+        logging.info(f"写入[{file_path}]")

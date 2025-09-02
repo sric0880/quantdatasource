@@ -3,7 +3,6 @@ import os
 from collections import defaultdict
 from decimal import ROUND_HALF_UP, Decimal
 
-import duckdb as db
 import numpy as np
 import pandas as pd
 
@@ -72,7 +71,7 @@ def maxupordown_status(symbol, price, kline):
     return (upper_diff + lower_diff) * yiziban
 
 
-def cal_adjust_factors(symbol, close_df):
+def cal_adjust_factors(daily_bars, yesterday_daily_bars):
     # 重新计算复权因子
     # 计算复权因子(前复权)
     logging.info(f"计算 {symbol} 前复权因子")
@@ -86,190 +85,110 @@ def cal_adjust_factors(symbol, close_df):
     return adj_df
 
 
-def fill_up_moneyflow(output):
-    # 补充资金流
-    # run source get_null_moneyflow.sql to get null_moneyflow.csv
-    nulls_df = pd.read_csv(os.path.join("sql", "null_moneyflow.csv"))
-    nulls_df["dt"] = pd.to_datetime(nulls_df["dt"]) - pd.Timedelta(value=8, unit="h")
-    _cache_mf_dfs = {}
-    for row in nulls_df.itertuples():
-        dt = row.dt.tz_localize(tz="UTC")
-        dt_str = dt.strftime("%Y%m%d")
-        moneyflow_df = _cache_mf_dfs.get(dt_str, None)
-        if moneyflow_df is None:
-            _cache_mf_dfs[dt_str] = moneyflow_df = pd.read_csv(
-                os.path.join(output, "moneyflow", f"{dt_str}.csv"), index_col=0
-            )
-            moneyflow_df["trade_date"] = pd.to_datetime(
-                moneyflow_df["trade_date"], format="%Y%m%d"
-            )
-            # print(moneyflow_df)
-        _symbol_moneyflow_df = moneyflow_df.loc[moneyflow_df["ts_code"] == row.symbol]
-        if _symbol_moneyflow_df.empty:
-            pass
-            # print(f"{dt_str}， {row.symbol} 无资金流数据")
-        else:
-            logging.info(f"-- {dt_str} 重新导入 {row.symbol} 资金流数据完毕")
-            # 补充资金流数据
-            _moneyflow_data = _symbol_moneyflow_df.iloc[0]
-            new_kline = {
-                "dt": dt,
-                "vip_buy_amt": _moneyflow_data.buy_lg_amount,
-                "vip_sell_amt": _moneyflow_data.sell_lg_amount,
-                "inst_buy_amt": _moneyflow_data.buy_elg_amount,
-                "inst_sell_amt": _moneyflow_data.sell_elg_amount,
-                "mid_buy_amt": _moneyflow_data.buy_md_amount,
-                "mid_sell_amt": _moneyflow_data.sell_md_amount,
-                "indi_buy_amt": _moneyflow_data.buy_sm_amount,
-                "indi_sell_amt": _moneyflow_data.sell_sm_amount,
-            }
-            new_kline["vip_net_flow_in"] = (
-                new_kline["vip_buy_amt"] - new_kline["vip_sell_amt"]
-            )
-            new_kline["inst_net_flow_in"] = (
-                new_kline["inst_buy_amt"] - new_kline["inst_sell_amt"]
-            )
-            new_kline["mid_net_flow_in"] = (
-                new_kline["mid_buy_amt"] - new_kline["mid_sell_amt"]
-            )
-            new_kline["indi_net_flow_in"] = (
-                new_kline["indi_buy_amt"] - new_kline["indi_sell_amt"]
-            )
-            new_kline["master2_net_flow_in"] = (
-                new_kline["mid_net_flow_in"]
-                + new_kline["vip_net_flow_in"]
-                + new_kline["inst_net_flow_in"]
-            )
-            new_kline["master_net_flow_in"] = (
-                new_kline["vip_net_flow_in"] + new_kline["inst_net_flow_in"]
-            )
-            new_kline["total_sell_amt"] = (
-                new_kline["mid_sell_amt"]
-                + new_kline["indi_sell_amt"]
-                + new_kline["vip_sell_amt"]
-                + new_kline["inst_sell_amt"]
-            )
-            new_kline["total_buy_amt"] = (
-                new_kline["mid_buy_amt"]
-                + new_kline["indi_buy_amt"]
-                + new_kline["vip_buy_amt"]
-                + new_kline["inst_buy_amt"]
-            )
-            new_kline["net_flow_in"] = (
-                new_kline["total_buy_amt"] - new_kline["total_sell_amt"]
-            )
-            yield pd.DataFrame([new_kline])
+# def calc_market_stats(stock_basic_df):
+#     #  统计全市场指标
+#     all_market_maxupordown = defaultdict(list)
+#     all_market_lb_counts = defaultdict(dict)
+#     for row in stock_basic_df.itertuples():
+#         symbol = row.symbol
+#         print(symbol)
+#         daily_file = os.path.join("datas/AStock", "daily", f"{symbol}.pkl")
+#         if not os.path.exists(daily_file):
+#             logging.warning(f"没有日线{symbol}数据，可能还未上市")
+#             continue
+#         df = pd.read_pickle(daily_file)
+
+#         # 全市场统计
+#         for row in df.itertuples():
+#             stock_name = row.stock_name
+#             if "ST" in stock_name or "退" in stock_name:
+#                 continue
+#             dt = row.Index
+#             _lb_up_count = row.lb_up_count
+#             _maxupordown_status = row.maxupordown
+#             all_market_maxupordown[dt].append(_maxupordown_status)
+#             if _lb_up_count > 0:
+#                 c = all_market_lb_counts[dt].setdefault(_lb_up_count, 0)
+#                 c += 1
+#                 all_market_lb_counts[dt][_lb_up_count] = c
+
+#     # 全市场统计汇总
+#     rows = []
+#     for dt, maxupordown_list in all_market_maxupordown.items():
+#         all_stock_number = len(maxupordown_list)
+#         count_of_uplimit = 0
+#         count_of_downlimit = 0
+#         count_of_yiziup = 0
+#         count_of_yizidown = 0
+#         for status in maxupordown_list:
+#             if status > 0:
+#                 count_of_uplimit += 1
+#             if status < 0:
+#                 count_of_downlimit += 1
+#             if status == 2:
+#                 count_of_yiziup += 1
+#             if status == -2:
+#                 count_of_yizidown += 1
+#         ratio_of_uplimit = count_of_uplimit / all_stock_number
+#         ratio_of_downlimit = count_of_downlimit / all_stock_number
+#         ratio_of_yiziup = count_of_yiziup / all_stock_number
+#         ratio_of_yizidown = count_of_yizidown / all_stock_number
+#         row = [
+#             dt,
+#             count_of_uplimit,
+#             count_of_downlimit,
+#             count_of_yiziup,
+#             count_of_yizidown,
+#             ratio_of_uplimit,
+#             ratio_of_downlimit,
+#             ratio_of_yiziup,
+#             ratio_of_yizidown,
+#         ]
+#         lb_counts = all_market_lb_counts[dt]
+#         row.extend([lb_counts.get(i, 0) for i in range(1, 13)])
+#         rows.append(row)
+#     market_df = pd.DataFrame(
+#         rows,
+#         columns=[
+#             "dt",
+#             "count_of_uplimit",
+#             "count_of_downlimit",
+#             "count_of_yiziup",
+#             "count_of_yizidown",
+#             "ratio_of_uplimit",
+#             "ratio_of_downlimit",
+#             "ratio_of_yiziup",
+#             "ratio_of_yizidown",
+#             "lb1",
+#             "lb2",
+#             "lb3",
+#             "lb4",
+#             "lb5",
+#             "lb6",
+#             "lb7",
+#             "lb8",
+#             "lb9",
+#             "lb10",
+#             "lb11",
+#             "lb12",
+#         ],
+#     )
+#     market_df = market_df.sort_values(by="dt")
+#     market_df = market_df.astype(np.int32, errors="ignore")
+#     market_df = market_df.astype(
+#         {
+#             "ratio_of_uplimit": "float32",
+#             "ratio_of_downlimit": "float32",
+#             "ratio_of_yiziup": "float32",
+#             "ratio_of_yizidown": "float32",
+#         }
+#     )
+#     # print(market_df)
+#     # print(market_df.info())
+#     return market_df
 
 
-def calc_market_stats(stock_basic_df):
-    #  统计全市场指标
-    # 还是之前读取pkl那一套
-    all_market_maxupordown = defaultdict(list)
-    all_market_lb_counts = defaultdict(dict)
-    for row in stock_basic_df.itertuples():
-        symbol = row.symbol
-        print(symbol)
-        daily_file = os.path.join("datas/AStock", "daily", f"{symbol}.pkl")
-        if not os.path.exists(daily_file):
-            logging.warning(f"没有日线{symbol}数据，可能还未上市")
-            continue
-        df = pd.read_pickle(daily_file)
-
-        # 全市场统计
-        for row in df.itertuples():
-            stock_name = row.stock_name
-            if "ST" in stock_name or "退" in stock_name:
-                continue
-            dt = row.Index
-            _lb_up_count = row.lb_up_count
-            _maxupordown_status = row.maxupordown
-            all_market_maxupordown[dt].append(_maxupordown_status)
-            if _lb_up_count > 0:
-                c = all_market_lb_counts[dt].setdefault(_lb_up_count, 0)
-                c += 1
-                all_market_lb_counts[dt][_lb_up_count] = c
-
-    # 全市场统计汇总
-    rows = []
-    for dt, maxupordown_list in all_market_maxupordown.items():
-        all_stock_number = len(maxupordown_list)
-        count_of_uplimit = 0
-        count_of_downlimit = 0
-        count_of_yiziup = 0
-        count_of_yizidown = 0
-        for status in maxupordown_list:
-            if status > 0:
-                count_of_uplimit += 1
-            if status < 0:
-                count_of_downlimit += 1
-            if status == 2:
-                count_of_yiziup += 1
-            if status == -2:
-                count_of_yizidown += 1
-        ratio_of_uplimit = count_of_uplimit / all_stock_number
-        ratio_of_downlimit = count_of_downlimit / all_stock_number
-        ratio_of_yiziup = count_of_yiziup / all_stock_number
-        ratio_of_yizidown = count_of_yizidown / all_stock_number
-        row = [
-            dt,
-            count_of_uplimit,
-            count_of_downlimit,
-            count_of_yiziup,
-            count_of_yizidown,
-            ratio_of_uplimit,
-            ratio_of_downlimit,
-            ratio_of_yiziup,
-            ratio_of_yizidown,
-        ]
-        lb_counts = all_market_lb_counts[dt]
-        row.extend([lb_counts.get(i, 0) for i in range(1, 13)])
-        rows.append(row)
-    market_df = pd.DataFrame(
-        rows,
-        columns=[
-            "dt",
-            "count_of_uplimit",
-            "count_of_downlimit",
-            "count_of_yiziup",
-            "count_of_yizidown",
-            "ratio_of_uplimit",
-            "ratio_of_downlimit",
-            "ratio_of_yiziup",
-            "ratio_of_yizidown",
-            "lb1",
-            "lb2",
-            "lb3",
-            "lb4",
-            "lb5",
-            "lb6",
-            "lb7",
-            "lb8",
-            "lb9",
-            "lb10",
-            "lb11",
-            "lb12",
-        ],
-    )
-    market_df = market_df.sort_values(by="dt")
-    market_df = market_df.astype(np.int32, errors="ignore")
-    market_df = market_df.astype(
-        {
-            "ratio_of_uplimit": "float32",
-            "ratio_of_downlimit": "float32",
-            "ratio_of_yiziup": "float32",
-            "ratio_of_yizidown": "float32",
-        }
-    )
-    # print(market_df)
-    # print(market_df.info())
-    return market_df
-
-
-def calc_bars_stock_week_and_month_and_import_to_duckdb(
-    adjust_factors_collection, all_symbols, symbols=[]
-):
-    from quantdatasource.dbimport import duckdb
-
+def update_bars_stock_week_and_month(daily_bars, adj_factors):
     # 当更新日线完成之后，将通过日线生成周线和月线 (前复权)
     for symbol in all_symbols:
         _week_tbname = symbol + "_w"
@@ -366,8 +285,6 @@ def calc_bars_stock_week_and_month_and_import_to_duckdb(
 def calc_all_bars_stock_week_and_month_and_import_to_duckdb(
     adjust_factors_collection, all_symbols
 ):
-    from quantdatasource.dbimport import duckdb
-
     # 当更新日线完成之后，将通过日线生成周线和月线 (前复权)
     for symbol in all_symbols:
         _week_tbname = symbol + "_w"

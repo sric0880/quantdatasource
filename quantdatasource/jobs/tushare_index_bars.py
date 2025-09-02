@@ -1,3 +1,4 @@
+import logging
 import pathlib
 
 from quantdatasource.api.tushare import TushareApi
@@ -21,7 +22,7 @@ def tushare_index_bars(dt, is_collect, is_import):
     calendar = get_astock_calendar()
     if not calendar.is_trading_day(dt):
         return
-    api = TushareApi(account.tushare_token, account.astock_output, dt)
+    api = TushareApi(account.tushare_token, account.raw_astock_output, dt)
 
     index_codes = [
         ("000016.SH", "2004-01-01"),
@@ -37,23 +38,27 @@ def tushare_index_bars(dt, is_collect, is_import):
         api.addition_download_index(index_codes)
 
     if is_import:
-        from quantdatasource.dbimport import duckdb
         from quantdatasource.dbimport.tushare import index
 
         daily = index.addition_read_index(api.index_daily_addition_path, "1D")
         weekly = index.addition_read_index(api.index_week_addition_path, "w")
         monthly = index.addition_read_index(api.index_month_addition_path, "mon")
-        parquet_output = pathlib.Path(f"{config.config['parquet_output']}/bars_index")
-        parquet_output.mkdir(parents=True, exist_ok=True)
+        output_dir = pathlib.Path(account.astock_output).joinpath("bars_index")
         if daily is not None:
-            daily_path = parquet_output/"daily"
-            daily_path.mkdir(parents=True, exist_ok=True)
-            duckdb.save_multi_tables(daily, daily_path/f"{dt.date().isoformat()}.parquet")
+            d_path = output_dir/"daily"
+            d_path.mkdir(parents=True, exist_ok=True)
+            file_path = d_path/f"{dt.date().isoformat()}.feather"
+            daily.to_feather(file_path)
+            logging.info(f"写入[{file_path}]")
         if weekly is not None:
-            daily_path = parquet_output/"weekly"
-            daily_path.mkdir(parents=True, exist_ok=True)
-            duckdb.save_multi_tables(weekly, daily_path/f"{dt.date().isoformat()}.parquet")
+            w_path = output_dir/"weekly"
+            w_path.mkdir(parents=True, exist_ok=True)
+            file_path = w_path/f"{dt.date().isoformat()}.feather"
+            weekly.to_feather(file_path)
+            logging.info(f"写入[{file_path}]")
         if monthly is not None:
-            daily_path = parquet_output/"monthly"
-            daily_path.mkdir(parents=True, exist_ok=True)
-            duckdb.save_multi_tables(monthly, daily_path/f"{dt.date().isoformat()}.parquet")
+            m_path = output_dir/"monthly"
+            m_path.mkdir(parents=True, exist_ok=True)
+            file_path = m_path/f"{dt.date().isoformat()}.feather"
+            monthly.to_feather(file_path)
+            logging.info(f"写入[{file_path}]")

@@ -193,34 +193,25 @@
 |lb11|11连板数量|
 |lb12|12连板数量|
 
-## TDengine/DuckDB
+## 文件
 
-ticks数据TDengine需要单独建库，时区：Asia/Shanghai
+按天保存，每天生成一个文件。
 
-### 1. bars_stock_daily A股日线详细数据
+### 1. daily_factors A股日线因子数据
 
-* 超级表：`bars_stock_daily`
-* 子表名: `{symbol}`
-* TAGS: `(symbol)`
+更多因子由其他程序生成。定期将价格数据(按前复权)按symbol合并成duckdb，用于加速回测。回测需要用到的字段：`dt`,`name`,`open`,`high`,`low`,`close`,`maxupordown`,`maxupordown_at_open`
 
 |字段名|说明|
 |--|--|
 |dt|交易日期|
 |name|股票名称|
-|open|开盘价|
-|high|最高价|
-|low|最低价|
-|close|收盘价|
+|open|开盘价(不复权)|
+|high|最高价(不复权)|
+|low|最低价(不复权)|
+|close|收盘价(不复权)|
 |preclose|前收盘价，若当天发生除权，前收盘价为上个交易日复权之后的收盘价|
 |volume|成交量（股）|
 |amount|成交额（元）|
-|net_profit_ttm|净利润TTM(不含少数股东损益)|
-|cashflow_ttm|现金流TTM, 经营活动产生的现金流量净额|
-|equity|净资产|
-|asset|总资产|
-|debt|总负债|
-|debttoasset|资产负债率|
-|net_profit_q|净利润(当季)|
 |pe_ttm|滚动市盈率|
 |pb|市净率|
 |mkt_cap|总市值(元)|
@@ -247,36 +238,22 @@ ticks数据TDengine需要单独建库，时区：Asia/Shanghai
 |total_shares|总股本|
 |maxupordown|标记收盘涨停或跌停状态,1表示涨停,2表示一字板涨停；-1则表示跌停，-2表示一字板跌停；0表示未涨跌停|
 |maxupordown_at_open|标记开盘涨停或跌停状态，状态码同上|
-|lb_up_count|连板涨停次数|
-|lb_down_count|连板跌停次数|
-|close_|收盘价(前复权)|
-|open_|开盘价(前复权)|
-|high_|最高价(前复权)|
-|low_|最低价(前复权)|
 
-### 2. bars A股K线数据（分钟线、日线、周线、月线）
+### 2. bars A股K线数据（周线、月线）
 
-* 超级表：`bars`
-* 子表名: `{symbol}_{period}`
-* TAGS: `(symbol, period)`
-
-已经是前复权的数据
+按symbol分别保存，每日计算复权，全量更新
 
 |字段名|说明|类型|
 |--|--|--|
 |dt|交易日期|datetime|
-|open|开盘价|float|
-|high|最高价|float|
-|low|最低价|float|
-|close|收盘价|float|
+|open|开盘价(前复权)|float|
+|high|最高价(前复权)|float|
+|low|最低价(前复权)|float|
+|close|收盘价(前复权)|float|
 |volume|成交量|int|
 |amount|成交额|double|
 
 ### 3. bars_ths_index_daily 同花顺概念板块日线行情数据
-
-* 超级表：`bars_ths_index_daily`
-* 子表名: `{symbol}`
-* TAGS: `(symbol)`
 
 |字段名|说明|
 |--|--|
@@ -292,10 +269,6 @@ ticks数据TDengine需要单独建库，时区：Asia/Shanghai
 |turnover_rate|换手率|
 
 ### 4. bars_cb_daily 可转债日线详细数据
-
-* 超级表：`bars_cb_daily`
-* 子表名: `{symbol}`
-* TAGS: `(symbol)`
 
 |字段名|说明|类型|
 |--|--|--|
@@ -322,10 +295,6 @@ ticks数据TDengine需要单独建库，时区：Asia/Shanghai
 
 ### 5. ticks
 
-* 超级表：`ticks`
-* 子表名: `{symbol}`
-* TAGS: `(symbol, exchange)`
-
 |字段名|说明|类型|
 |--|--|--|
 |dt|时间戳|datetime|
@@ -337,13 +306,9 @@ ticks数据TDengine需要单独建库，时区：Asia/Shanghai
 |bid_volume1|买1量|int|
 |ask_volume1|卖1量|int|
 
-### 6. tick_bars K线数据
+### 6. bars A股K线数据（分钟线）
 
 由ticks数据生成，方便ticks的读取和回放
-
-* 超级表：`tick_bars`
-* 子表名: `{symbol}_{period}`
-* TAGS: `(symbol, period, exchange)`
 
 |字段名|说明|
 |--|--|
