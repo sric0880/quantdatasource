@@ -181,9 +181,8 @@ def tushare_misc_data(dt, is_collect, is_import):
         else:
             logging.info("同花顺概念股成分没有增量改变")
 
-        ths_index_daily_out = (
-            pathlib.Path(account.astock_output) / "bars_ths_index_daily"
-        )
+        output_dir = pathlib.Path(account.astock_output)
+        ths_index_daily_out = output_dir / "bars_ths_index_daily"
         ths_index_daily_out.mkdir(parents=True, exist_ok=True)
         ths_index_df = ths_index.addition_read_concepts_bars(
             api.ths_daily_bars_addition_path, concepts_basic_df
@@ -200,7 +199,7 @@ def tushare_misc_data(dt, is_collect, is_import):
             api.moneyflow_addition_path,
             chinese_names,
         )
-        stock_daily_out = pathlib.Path(account.astock_output) / "bars_stock_daily"
+        stock_daily_out = output_dir / "bars_stock_daily"
         stock_daily_out.mkdir(parents=True, exist_ok=True)
         stock_daily_file_path = stock_daily_out / f"{dt.date().isoformat()}.feather"
         daily_bars.to_feather(stock_daily_file_path)
@@ -212,10 +211,16 @@ def tushare_misc_data(dt, is_collect, is_import):
         )
         adjust_factors_collection = conn["finance"]["adjust_factors"]
         adj_factors = stock_utils.cal_adjust_factors(daily_bars, yesterday_daily_bars)
-        for symbol, adj_df in adj_factors.items():
+        for symbol, adj in adj_factors.items():
+            lst = []
+            for one in adjust_factors_collection.find({"symbol": symbol}):
+                one["adjust_factor"] *= adj
+                print(one)
+                lst.append(one)
+            lst.append({"symbol": symbol, "adjust_factor": 1.0, "tradedate": dt})
             adjust_factors_collection.delete_many({"symbol": symbol})
-            adjust_factors_collection.insert_many(adj_df.to_dict(orient="records"))
-        stock_utils.update_bars_stock_week_and_month(daily_bars, adj_factors)
+            adjust_factors_collection.insert_many(lst)
+        stock_utils.update_bars_stock_week_and_month(output_dir, daily_bars, adj_factors)
 
         lhb_collection = conn["finance"]["lhb"]
         lhb_data = lhb.addition_read_lhb(

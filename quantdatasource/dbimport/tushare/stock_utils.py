@@ -1,9 +1,7 @@
 import logging
-import os
-from collections import defaultdict
+import math
 from decimal import ROUND_HALF_UP, Decimal
 
-import numpy as np
 import pandas as pd
 
 
@@ -74,15 +72,18 @@ def maxupordown_status(symbol, price, kline):
 def cal_adjust_factors(daily_bars, yesterday_daily_bars):
     # 重新计算复权因子
     # 计算复权因子(前复权)
-    logging.info(f"计算 {symbol} 前复权因子")
-    adj_prices = close_df["preclose"] / close_df["_close"].shift(1)
-    adjust_factors = adj_prices.iloc[::-1].cumprod().iloc[::-1].shift(-1, fill_value=1)
-    adj_df = pd.DataFrame(
-        {"adjust_factor": adjust_factors, "tradedate": close_df["dt"]}
-    )
-    adj_df = adj_df.drop_duplicates(subset=["adjust_factor"])
-    adj_df["symbol"] = symbol
-    return adj_df
+    ret = {}
+    df = pd.concat([yesterday_daily_bars, daily_bars])
+    for symbol, sd in df.groupby(by="symbol"):
+        if len(sd) < 2:
+            continue
+        adj_preclose = sd["preclose"].iloc[1]
+        preclose = sd["close"].iloc[0]
+        if math.isclose(adj_preclose, preclose, abs_tol=0.001):
+            adj = adj_preclose / preclose
+            logging.info(f"计算 {symbol} 前复权因子 {adj}")
+            ret[symbol] = adj
+    return ret
 
 
 # def calc_market_stats(stock_basic_df):
@@ -188,171 +189,78 @@ def cal_adjust_factors(daily_bars, yesterday_daily_bars):
 #     return market_df
 
 
-def update_bars_stock_week_and_month(daily_bars, adj_factors):
+def apply_adjust_factor(dir, symbol, adj):
+    df = pd.read_feather(dir / f"{symbol}.parquet")
+    df["open"] = df["open"] * adj
+    df["high"] = df["high"] * adj
+    df["low"] = df["low"] * adj
+    df["close"] = df["close"] * adj
+    return df
+
+
+def update_bars_stock_week_and_month(dir, daily_bars, adj_factors):
     # 当更新日线完成之后，将通过日线生成周线和月线 (前复权)
-    for symbol in all_symbols:
-        _week_tbname = symbol + "_w"
-        _month_tbname = symbol + "_mon"
-        if symbol in symbols:
+    stock_mon_out = dir / "bars_stock_month"
+    stock_mon_out.mkdir(parents=True, exist_ok=True)
+    stock_w_out = dir / "bars_stock_week"
+    stock_w_out.mkdir(parents=True, exist_ok=True)
+    for row in daily_bars.itertuples():
+        symbol = row.symbol
+        if symbol in adj_factors:
             # 删除之前的表
-            logging.info(f"{symbol} 今日除权，需要重新计算前复权日线、周线、月线")
-            _d = get_data_df("bars_stock_daily", duckdb.get_tbname(symbol))
-            if _d.empty:
-                continue
-            adjs = adjust_factors_collection.find(
-                {"symbol": symbol},
-                projection={"tradedate": 1, "adjust_factor": 1, "_id": 0},
-            )
-            adj_df = pd.DataFrame(adjs)
-            if not adj_df.empty:
-                adj_df = adj_df.rename(columns={"tradedate": "dt"})
-                adj_df["dt"] = adj_df["dt"].astype("datetime64[s]")
-                _d = pd.merge_ordered(left=_d, right=adj_df, on="dt", how="left")
-                _d["adjust_factor"].fillna(method="ffill", inplace=True)
-                _d["open"] = _d["_open"] * _d["adjust_factor"]
-                _d["high"] = _d["_high"] * _d["adjust_factor"]
-                _d["low"] = _d["_low"] * _d["adjust_factor"]
-                _d["close"] = _d["_close"] * _d["adjust_factor"]
-                _d.drop(columns=["adjust_factor"], inplace=True)
-            _week_df = _daily_to_week(_d)
-            _month_df = _daily_to_month(_d)
-            duckdb.create_or_replace_table(_week_df, _week_tbname, "bars_stock")
-            logging.info(f"-- 重新导入 {symbol} 周线完毕")
-            duckdb.create_or_replace_table(_month_df, _month_tbname, "bars_stock")
-            logging.info(f"-- 重新导入 {symbol} 月线完毕")
-            duckdb.create_or_replace_table(_d, symbol, "bars_stock_daily")
-            logging.info(f"-- 重新导入 {symbol} 日线前复权价格完毕")
-            adjs.close()
+            logging.info(f"{symbol} 今日除权，需要重新计算前复权周线、月线")
+            mon_df = apply_adjust_factor(stock_mon_out, symbol, adj_factors[symbol])
+            w_df = apply_adjust_factor(stock_w_out, symbol, adj_factors[symbol])
         else:
-            last_row = get_data_last_row(
-                "bars_stock_daily",
-                duckdb.get_tbname(symbol),
-                fields=["dt", "open", "high", "low", "close", "volume", "amount"],
-            ).fetchone()
-
-            try:
-                last_week_row = get_data_last_row(
-                    "bars_stock",
-                    duckdb.get_tbname(_week_tbname),
-                    fields=["dt", "open", "high", "low", "close", "volume", "amount"],
-                ).fetchone()
-                _update_week_row = (
-                    last_row[0].isocalendar()[1] == last_week_row[0].isocalendar()[1]
+            mon_df = pd.read_feather(stock_mon_out / f"{symbol}.parquet")
+            w_df = pd.read_feather(stock_w_out / f"{symbol}.parquet")
+        last_w_row = w_df.iloc[-1]
+        last_mon_row = mon_df.iloc[-1]
+        last_w_dt = last_w_row["dt"]
+        last_mon_dt = last_mon_row["dt"]
+        if row.dt.isocalendar()[1] == last_w_dt.isocalendar()[1]:
+            if row.dt > last_w_dt:
+                w_df.loc[
+                    last_w_row.index, ["dt", "high", "low", "close", "volume", "amount"]
+                ] = (
+                    row.dt,
+                    max(last_w_row["high"], row.high),
+                    min(last_w_row["low"], row.low),
+                    row.close,
+                    last_w_row["volume"] + row.volume,
+                    last_w_row["amount"] + row.amount,
                 )
-            except db.CatalogException:
-                _update_week_row = False
-            if _update_week_row:
-                if last_row[0] > last_week_row[0]:
-                    new_values = {
-                        "dt": last_row[0],
-                        "high": max(last_week_row[2], last_row[2]),
-                        "low": min(last_week_row[3], last_row[3]),
-                        "close": last_row[4],
-                        "volume": last_week_row[5] + last_row[5],
-                        "amount": last_week_row[6] + last_row[6],
-                    }
-                    duckdb.update(last_week_row[0], new_values, _week_tbname, "bars_stock")
-            else:
-                duckdb.insert_one(last_row, _week_tbname, "bars_stock")
-
-            try:
-                last_month_row = get_data_last_row(
-                    "bars_stock",
-                    duckdb.get_tbname(_month_tbname),
-                    fields=["dt", "open", "high", "low", "close", "volume", "amount"],
-                ).fetchone()
-                _update_month_row = last_row[0].month == last_month_row[0].month
-            except db.CatalogException:
-                _update_month_row = False
-            if _update_month_row:
-                if last_row[0] > last_month_row[0]:
-                    new_values = {
-                        "dt": last_row[0],
-                        "high": max(last_month_row[2], last_row[2]),
-                        "low": min(last_month_row[3], last_row[3]),
-                        "close": last_row[4],
-                        "volume": last_month_row[5] + last_row[5],
-                        "amount": last_month_row[6] + last_row[6],
-                    }
-                    duckdb.update(
-                        last_month_row[0], new_values, _month_tbname, "bars_stock"
-                    )
-            else:
-                duckdb.insert_one(last_row, _month_tbname, "bars_stock")
-    logging.info("前复权周线、月线导入完毕")
-
-
-def calc_all_bars_stock_week_and_month_and_import_to_duckdb(
-    adjust_factors_collection, all_symbols
-):
-    # 当更新日线完成之后，将通过日线生成周线和月线 (前复权)
-    for symbol in all_symbols:
-        _week_tbname = symbol + "_w"
-        _month_tbname = symbol + "_mon"
-        # 删除之前的表
-        logging.info(f"{symbol} 重新计算前复权日线、周线、月线")
-        _d = get_data_df("bars_stock_daily", duckdb.get_tbname(symbol))
-        if _d.empty:
-            continue
-        adjs = adjust_factors_collection.find(
-            {"symbol": symbol},
-            projection={"tradedate": 1, "adjust_factor": 1, "_id": 0},
-        )
-        adj_df = pd.DataFrame(adjs)
-        if not adj_df.empty:
-            adj_df = adj_df.rename(columns={"tradedate": "dt"})
-            adj_df["dt"] = adj_df["dt"].dt.tz_localize("UTC")
-            _d = pd.merge_ordered(left=_d, right=adj_df, on="dt", how="left")
-            _d["adjust_factor"].fillna(method="ffill", inplace=True)
-            _d["open"] = _d["_open"] * _d["adjust_factor"]
-            _d["high"] = _d["_high"] * _d["adjust_factor"]
-            _d["low"] = _d["_low"] * _d["adjust_factor"]
-            _d["close"] = _d["_close"] * _d["adjust_factor"]
-            _d.drop(columns=["adjust_factor"], inplace=True)
-        _week_df = _daily_to_week(_d)
-        _month_df = _daily_to_month(_d)
-        duckdb.create_or_replace_table(_week_df, _week_tbname, "bars_stock")
-        logging.info(f"-- 重新导入 {symbol} 周线完毕")
-        duckdb.create_or_replace_table(_month_df, _month_tbname, "bars_stock")
-        logging.info(f"-- 重新导入 {symbol} 月线完毕")
-        duckdb.create_or_replace_table(_d, symbol, "bars_stock_daily")
-        logging.info(f"-- 重新导入 {symbol} 日线前复权价格完毕")
-        adjs.close()
-    logging.info("前复权周线、月线导入完毕")
-
-
-def _daily_to_week(df: pd.DataFrame):
-    # 合成周线和月线
-    week_df = df.groupby(pd.Grouper(key="dt", freq="W")).agg(
-        {
-            "dt": "last",
-            "open": "first",
-            "high": "max",
-            "low": "min",
-            "close": "last",
-            "volume": "sum",
-            "amount": "sum",
-        }
-    )
-    week_df = week_df.dropna(axis=0)
-    week_df = week_df.reset_index(drop=True)
-    week_df = week_df.astype({"amount": "float64"})
-    return week_df
-
-
-def _daily_to_month(df: pd.DataFrame):
-    month_df = df.groupby(pd.Grouper(key="dt", freq="M")).agg(
-        {
-            "dt": "last",
-            "open": "first",
-            "high": "max",
-            "low": "min",
-            "close": "last",
-            "volume": "sum",
-            "amount": "sum",
-        }
-    )
-    month_df = month_df.dropna(axis=0)
-    month_df = month_df.reset_index(drop=True)
-    month_df = month_df.astype({"amount": "float64"})
-    return month_df
+        else:
+            w_df = pd.concat(
+                [
+                    w_df,
+                    pd.DataFrame(
+                        [(row.dt, row.high, row.low, row.close, row.volume, row.amount)]
+                    ),
+                ]
+            )
+        if row.dt.month == last_mon_dt.month:
+            if row.dt > last_mon_dt:
+                mon_df.loc[
+                    last_mon_row.index,
+                    ["dt", "high", "low", "close", "volume", "amount"],
+                ] = (
+                    row.dt,
+                    max(last_w_row["high"], row.high),
+                    min(last_w_row["low"], row.low),
+                    row.close,
+                    last_w_row["volume"] + row.volume,
+                    last_w_row["amount"] + row.amount,
+                )
+        else:
+            mon_df = pd.concat(
+                [
+                    mon_df,
+                    pd.DataFrame(
+                        [(row.dt, row.high, row.low, row.close, row.volume, row.amount)]
+                    ),
+                ]
+            )
+        mon_df.to_feather(stock_mon_out / f"{symbol}.parquet")
+        w_df.to_feather(stock_w_out / f"{symbol}.parquet")
+        logging.info("前复权周线、月线导入完毕")
