@@ -47,18 +47,18 @@ def tushare_index_bars(dt, is_collect, is_import):
         if daily is not None:
             d_path = output_dir/"daily"
             d_path.mkdir(parents=True, exist_ok=True)
-            file_path = d_path/f"{dt.date().isoformat()}.feather"
-            daily.to_feather(file_path)
+            file_path = d_path/f"{dt.date().isoformat()}.parquet"
+            daily.to_parquet(file_path)
             logging.info(f"写入[{file_path}]")
         if weekly is not None:
             w_path = output_dir/"weekly"
             w_path.mkdir(parents=True, exist_ok=True)
-            file_path = w_path/f"{dt.date().isoformat()}.feather"
-            weekly.to_feather(file_path)
+            file_path = w_path/f"{dt.date().isoformat()}.parquet"
+            weekly.to_parquet(file_path)
             logging.info(f"写入[{file_path}]")
         if monthly is not None:
             m_path = output_dir/"monthly"
             m_path.mkdir(parents=True, exist_ok=True)
-            file_path = m_path/f"{dt.date().isoformat()}.feather"
-            monthly.to_feather(file_path)
+            file_path = m_path/f"{dt.date().isoformat()}.parquet"
+            monthly.to_parquet(file_path)
             logging.info(f"写入[{file_path}]")

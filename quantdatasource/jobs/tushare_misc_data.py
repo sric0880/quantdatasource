@@ -187,8 +187,8 @@ def tushare_misc_data(dt, is_collect, is_import):
         ths_index_df = ths_index.addition_read_concepts_bars(
             api.ths_daily_bars_addition_path, concepts_basic_df
         )
-        ths_index_file_path = ths_index_daily_out / f"{dt.date().isoformat()}.feather"
-        ths_index_df.to_feather(ths_index_file_path)
+        ths_index_file_path = ths_index_daily_out / f"{dt.date().isoformat()}.parquet"
+        ths_index_df.to_parquet(ths_index_file_path)
         logging.info(f"写入[{ths_index_file_path}]")
 
         chinese_names = dict(zip(stock_basic_df["symbol"], stock_basic_df["name"]))
@@ -201,13 +201,13 @@ def tushare_misc_data(dt, is_collect, is_import):
         )
         stock_daily_out = output_dir / "bars_stock_daily"
         stock_daily_out.mkdir(parents=True, exist_ok=True)
-        stock_daily_file_path = stock_daily_out / f"{dt.date().isoformat()}.feather"
-        daily_bars.to_feather(stock_daily_file_path)
+        stock_daily_file_path = stock_daily_out / f"{dt.date().isoformat()}.parquet"
+        daily_bars.to_parquet(stock_daily_file_path)
         logging.info(f"写入[{stock_daily_file_path}]")
 
         yesterday = pydt_from_second(calendar.get_tradedays_lte(dt, 2)[0])
         yesterday_daily_bars = pd.read_feather(
-            stock_daily_out / f"{yesterday.date().isoformat()}.feather"
+            stock_daily_out / f"{yesterday.date().isoformat()}.parquet"
         )
         adjust_factors_collection = conn["finance"]["adjust_factors"]
         adj_factors = stock_utils.cal_adjust_factors(daily_bars, yesterday_daily_bars)

@@ -31,7 +31,7 @@ def tushare_cb_daily(dt, is_collect, is_import):
 
         output_dir = pathlib.Path(account.astock_output).joinpath("bars_cb_daily")
         output_dir.mkdir(parents=True, exist_ok=True)
-        file_path = output_dir.joinpath(f"{dt.date().isoformat()}.feather")
+        file_path = output_dir.joinpath(f"{dt.date().isoformat()}.parquet")
         df = cb.addition_read_cb_daily( dt, api.cb_daily_bars_addition_path, api.basic_cb_path)
-        df.to_feather(file_path)
+        df.to_parquet(file_path)
         logging.info(f"写入[{file_path}]")

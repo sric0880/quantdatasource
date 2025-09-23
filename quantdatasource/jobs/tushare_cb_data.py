@@ -40,6 +40,6 @@ def tushare_cb_data(dt, is_collect, is_import):
                 dfs.append(df)
 
         big_df = pd.concat(dfs)
-        file_path = f"{account.astock_output}/bars_cb_data.feather"
-        big_df.to_feather(file_path)
+        file_path = f"{account.astock_output}/bars_cb_data.parquet"
+        big_df.to_parquet(file_path)
         logging.info(f"写入[{file_path}]")
