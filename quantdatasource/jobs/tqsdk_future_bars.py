@@ -18,7 +18,7 @@ def tqsdk_future_bars(dt, is_collect, is_import):
         tushare_api.full_download_all_future_bars()
     from quantdatasource.api.tqsdk import TQSDKApi
 
-    api = TQSDKApi(account.tq_username, account.tq_psw, account.raw_future_output dt)
+    api = TQSDKApi(account.tq_username, account.tq_psw, account.raw_future_output, dt)
     with closing(api):
         if is_collect:
             api.full_download_bars()

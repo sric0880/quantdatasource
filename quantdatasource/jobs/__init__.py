@@ -1,4 +1,3 @@
-from quantdatasource.jobs import config
 from quantdatasource.jobs.ctp_download_contracts import *
 from quantdatasource.jobs.eastmoney_analyst_reports import *
 from quantdatasource.jobs.ths_hot_stocks import *

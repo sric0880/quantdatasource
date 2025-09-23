@@ -204,6 +204,7 @@
 |字段名|说明|
 |--|--|
 |dt|交易日期|
+|symbol|股票代码|
 |name|股票名称|
 |open|开盘价(不复权)|
 |high|最高价(不复权)|
@@ -239,21 +240,7 @@
 |maxupordown|标记收盘涨停或跌停状态,1表示涨停,2表示一字板涨停；-1则表示跌停，-2表示一字板跌停；0表示未涨跌停|
 |maxupordown_at_open|标记开盘涨停或跌停状态，状态码同上|
 
-### 2. bars A股K线数据（周线、月线）
-
-按symbol分别保存，每日计算复权，全量更新
-
-|字段名|说明|类型|
-|--|--|--|
-|dt|交易日期|datetime|
-|open|开盘价(前复权)|float|
-|high|最高价(前复权)|float|
-|low|最低价(前复权)|float|
-|close|收盘价(前复权)|float|
-|volume|成交量|int|
-|amount|成交额|double|
-
-### 3. bars_ths_index_daily 同花顺概念板块日线行情数据
+### 2. bars_ths_index_daily 同花顺概念板块日线行情数据
 
 |字段名|说明|
 |--|--|
@@ -268,7 +255,7 @@
 |volume|成交量|
 |turnover_rate|换手率|
 
-### 4. bars_cb_daily 可转债日线详细数据
+### 3. bars_cb_daily 可转债日线详细数据
 
 |字段名|说明|类型|
 |--|--|--|
@@ -293,7 +280,7 @@
 |is_call|是否赎回：1已满足强赎条件、2公告提示强赎、3公告实施强赎、4公告到期赎回、5公告不强赎|int|
 |call_type|赎回类型：1到赎、2强赎|int|
 
-### 5. ticks
+### 4. ticks
 
 |字段名|说明|类型|
 |--|--|--|
@@ -306,7 +293,7 @@
 |bid_volume1|买1量|int|
 |ask_volume1|卖1量|int|
 
-### 6. bars A股K线数据（分钟线）
+### 5. bars A股K线数据（分钟线）
 
 由ticks数据生成，方便ticks的读取和回放
 

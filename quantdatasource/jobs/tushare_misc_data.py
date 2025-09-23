@@ -220,7 +220,6 @@ def tushare_misc_data(dt, is_collect, is_import):
             lst.append({"symbol": symbol, "adjust_factor": 1.0, "tradedate": dt})
             adjust_factors_collection.delete_many({"symbol": symbol})
             adjust_factors_collection.insert_many(lst)
-        stock_utils.update_bars_stock_week_and_month(output_dir, daily_bars, adj_factors)
 
         lhb_collection = conn["finance"]["lhb"]
         lhb_data = lhb.addition_read_lhb(

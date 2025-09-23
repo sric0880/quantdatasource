@@ -10,7 +10,7 @@ authors = [
 ]
 description = 'finance datasource downloader and importer'
 requires-python = ">=3.9"
-dependencies = ["numpy>=1.26.4", "pymongo", "pyyaml", "apscheduler", "pandas", "tushare", "quantcalendar", "quantdata"]
+dependencies = ["numpy>=1.26.4", "pymongo", "pyyaml", "apscheduler", "pandas", "tushare", "quantcalendar", "quantdata", "tqsdk"]
 
 [project.optional-dependencies]
 more = ["taos", "baostock"]

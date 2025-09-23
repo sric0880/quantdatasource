@@ -19,10 +19,14 @@ from .utils import log
 class TQSDKApi:
     def __init__(self, username, psw, output, trade_date):
         self.output = Path(output, "tqsdk")
-        self.dt = trade_date
-        trade_date = trade_date.strftime("%Y-%m-%d")
+        if isinstance(trade_date, int):
+            trade_date = str(trade_date)
+        if isinstance(trade_date, str):
+            self.dt = datetime.strptime(trade_date, "%Y%m%d")
+        else:
+            self.dt = trade_date
+            trade_date = trade_date.strftime("%Y%m%d")
         self.trade_date = trade_date
-
         self.api = TqApi(auth=TqAuth(username, psw))
         self.future_basic_path = Path(self.output, "future_basic.csv")
         self.product_basic_path = Path(self.output, "product_basic.csv")

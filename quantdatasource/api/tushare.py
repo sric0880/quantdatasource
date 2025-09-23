@@ -1,7 +1,7 @@
 import logging
 import os
 import shutil
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from time import sleep, time
 
@@ -16,8 +16,13 @@ class TushareApi:
     def __init__(self, token, output, trade_date) -> None:
         self.api = ts.pro_api(token)
         self.output = Path(output, "tushare")
-        self.dt = trade_date
-        trade_date = trade_date.strftime("%Y%m%d")
+        if isinstance(trade_date, int):
+            trade_date = str(trade_date)
+        if isinstance(trade_date, str):
+            self.dt = datetime.strptime(trade_date, "%Y%m%d")
+        else:
+            self.dt = trade_date
+            trade_date = trade_date.strftime("%Y%m%d")
         self.trade_date = trade_date
         self.basic_stock_path = Path(self.output, "stock_basic.csv")
         self.basic_cb_path = Path(self.output, "cb_basic.csv")
