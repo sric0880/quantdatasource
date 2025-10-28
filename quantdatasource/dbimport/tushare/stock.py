@@ -135,7 +135,7 @@ def addition_read_stock_daily_bars(
                 current_end_date = cf_doc["end_date"]
                 if _end_date is not None and _end_date == current_end_date:
                     continue
-                n_cashflow_act.append(cf_doc["n_cashflow_act"])
+                n_cashflow_act.append(cf_doc.get("n_cashflow_act", 0))
                 _end_date = current_end_date
             cashflow_ttm = sum(n_cashflow_act)
             if cashflow_ttm == 0:
