@@ -79,7 +79,7 @@ def cal_adjust_factors(daily_bars, yesterday_daily_bars):
             continue
         adj_preclose = sd["preclose"].iloc[1]
         preclose = sd["close"].iloc[0]
-        if math.isclose(adj_preclose, preclose, abs_tol=0.001):
+        if not math.isclose(adj_preclose, preclose, abs_tol=0.001):
             adj = adj_preclose / preclose
             logging.info(f"计算 {symbol} 前复权因子 {adj}")
             ret[symbol] = adj

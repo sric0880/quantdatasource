@@ -163,8 +163,8 @@ def addition_read_stock_daily_bars(
             "turnover": "float32",
             "free_shares": "uint64",
             "total_shares": "uint64",
-            "maxupordown": "int",
-            "maxupordown_at_open": "int",
+            "maxupordown": "int8",
+            "maxupordown_at_open": "int8",
         }
     )
     return df
