@@ -188,7 +188,7 @@ def tushare_misc_data(dt, is_collect, is_import):
             api.ths_daily_bars_addition_path, concepts_basic_df
         )
         ths_index_file_path = ths_index_daily_out / f"{dt.date().isoformat()}.parquet"
-        ths_index_df.to_parquet(ths_index_file_path)
+        ths_index_df.to_parquet(ths_index_file_path, index=False)
         logging.info(f"写入[{ths_index_file_path}]")
 
         chinese_names = dict(zip(stock_basic_df["symbol"], stock_basic_df["name"]))
