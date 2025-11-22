@@ -12,6 +12,16 @@ def addition_read_index(filepath, periodname):
     df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
     df = df.reset_index(drop=True)
     df = df.rename(columns={"trade_date": "dt", "vol": "volume", "ts_code": "symbol"})
-    df = df.astype({"volume": "int64"})
+    df = df.astype(
+        {
+            "volume": "uint64",
+            "amount": "uint64",
+            "close": "float32",
+            "open": "float32",
+            "high": "float32",
+            "low": "float32",
+            "dt": "datetime64[ms]",
+        }
+    )
     df = df.drop(columns=["pre_close", "change", "pct_chg"])
     return df
