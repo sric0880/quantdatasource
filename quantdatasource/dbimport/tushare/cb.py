@@ -71,7 +71,7 @@ def addition_read_cb_daily(dt, cb_daily_addition_path, basic_cb_path):
     basic_df = read_basic(basic_cb_path)
     logging.info(f"增量读取可转债日线 {tradedt}")
     df: pd.DataFrame = pd.read_csv(cb_daily_addition_path, index_col=0)
-    df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
+    df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d").astype("datetime64[ms]")
     df = df.reset_index(drop=True)
     df = df.rename(
         columns={
@@ -82,8 +82,20 @@ def addition_read_cb_daily(dt, cb_daily_addition_path, basic_cb_path):
         }
     )
     dtypes = {
-        "volume": "int32",
-        "amount": "int64",
+        "symbol": "str",
+        "open": "float32",
+        "high": "float32",
+        "low": "float32",
+        "close": "float32",
+        "volume": "uint32",
+        "amount": "uint64",
+        "preclose": "float32",
+        "change": "float32",
+        "pct_chg": "float32",
+        "cb_value": "float32",
+        "cb_over_rate": "float32",
+        "bond_over_rate": "float32",
+        "bond_value": "float32",
     }
     df = df.astype(dtypes)
     df = df.fillna(0)
@@ -112,11 +124,14 @@ def addition_read_cb_daily(dt, cb_daily_addition_path, basic_cb_path):
 
 
 def read_cb_call(symbol, cb_call_path):
-    cb_call_csv = Path(cb_call_path, f"{symbol}.csv")
-    df = pd.read_csv(cb_call_csv)
     fields = ["dt", "call_price", "call_price_tax", "is_call", "call_type"]
+    cb_call_csv = Path(cb_call_path, f"{symbol}.csv")
+    if not cb_call_csv.exists():
+        logging.error(f"可转债赎回数据 {cb_call_csv} not found")
+        return pd.DataFrame(columns=fields)
+    df = pd.read_csv(cb_call_csv)
     if df.empty:
-        logging.warning(f"读取可转债赎回数据 {symbol} 为空")
+        # logging.warning(f"读取可转债赎回数据 {symbol} 为空")
         return pd.DataFrame(columns=fields)
     df["call_type"] = df["call_type"].map({"强赎": 2, "到赎": 1})
     df["is_call"] = df["is_call"].map(

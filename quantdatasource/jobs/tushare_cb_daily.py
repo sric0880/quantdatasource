@@ -33,5 +33,5 @@ def tushare_cb_daily(dt, is_collect, is_import):
         output_dir.mkdir(parents=True, exist_ok=True)
         file_path = output_dir.joinpath(f"{dt.date().isoformat()}.parquet")
         df = cb.addition_read_cb_daily( dt, api.cb_daily_bars_addition_path, api.basic_cb_path)
-        df.to_parquet(file_path)
+        df.to_parquet(file_path, index=False)
         logging.info(f"写入[{file_path}]")

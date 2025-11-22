@@ -175,3 +175,4 @@ cython_debug/
 *.con
 .tmp/
 deprecated/
+.vscode/
