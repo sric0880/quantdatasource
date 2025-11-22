@@ -131,6 +131,7 @@ def addition_read_stock_daily_bars(
     df = pd.DataFrame(all_datas)
     df = df.astype(
         {
+            "dt": "datetime64[ms]",
             "name": "string",
             "open": "float32",
             "high": "float32",

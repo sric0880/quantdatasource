@@ -159,6 +159,7 @@ def tushare_misc_data(dt, is_collect, is_import):
         from quantdatasource.dbimport.tushare import (cb, lhb, stock,
                                                       stock_utils, ths_index)
 
+        output_dir = pathlib.Path(account.astock_output)
         stock_basic_df = stock.read_basic(api.basic_stock_path)
         data_saver.mongo_insert_many(stock_basic_df, "finance", "basic_info_stocks")
 
@@ -182,7 +183,6 @@ def tushare_misc_data(dt, is_collect, is_import):
         else:
             logging.info("同花顺概念股成分没有增量改变")
 
-        output_dir = pathlib.Path(account.astock_output)
         ths_index_daily_out = output_dir / "bars_ths_index_daily"
         ths_index_daily_out.mkdir(parents=True, exist_ok=True)
         ths_index_df = ths_index.addition_read_concepts_bars(
