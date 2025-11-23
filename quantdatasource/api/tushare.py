@@ -148,7 +148,7 @@ class TushareApi:
 
     @log
     def full_download_finance_data(self, force_replace=False):
-        """全量下载所有财务报表"""
+        """全量下载所有财务报表(每分钟最多访问500次)"""
         if not self.basic_stock_path.exists():
             logging.error(
                 f"{self.basic_stock_path}不存在，必须先调用 full_download_stock_basic"
@@ -156,6 +156,7 @@ class TushareApi:
             return
         df = pd.read_csv(self.basic_stock_path, index_col=0)
         for row in df.itertuples():
+            t = time()
             symbol = row.ts_code
             path = Path(self.finance_income_path, f"{symbol}.csv")
             if not force_replace and path.exists():
@@ -163,7 +164,12 @@ class TushareApi:
             _df = self.api.income(ts_code=symbol)
             _df.to_csv(path)
             logging.info(f"  {symbol} 利润表下载完成")
+            eclipse = time() - t
+            wait_t = 0.13 - eclipse
+            if wait_t > 0:
+                sleep(wait_t)
         for row in df.itertuples():
+            t = time()
             symbol = row.ts_code
             path = Path(self.finance_balancesheet_path, f"{symbol}.csv")
             if not force_replace and path.exists():
@@ -171,7 +177,12 @@ class TushareApi:
             _df = self.api.balancesheet(ts_code=symbol)
             _df.to_csv(path)
             logging.info(f"  {symbol} 资产负债表下载完成")
+            eclipse = time() - t
+            wait_t = 0.13 - eclipse
+            if wait_t > 0:
+                sleep(wait_t)
         for row in df.itertuples():
+            t = time()
             symbol = row.ts_code
             path = Path(self.finance_cashflow_path, f"{symbol}.csv")
             if not force_replace and path.exists():
@@ -179,6 +190,10 @@ class TushareApi:
             _df = self.api.cashflow(ts_code=symbol)
             _df.to_csv(path)
             logging.info(f"  {symbol} 现金流量表下载完成")
+            eclipse = time() - t
+            wait_t = 0.13 - eclipse
+            if wait_t > 0:
+                sleep(wait_t)
 
     @log
     def addition_download_finance_data(self):
