@@ -112,7 +112,7 @@ def _mongo_import_finance_data(row, symbol, tablename):
     id="astock_tushare",
     name="[TushareApi]其他",
     replace_existing=True,
-    hour=20,
+    hour=23,
     minute=30,
     misfire_grace_time=200,
 )
