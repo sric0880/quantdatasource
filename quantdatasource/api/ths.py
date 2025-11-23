@@ -5,6 +5,7 @@
 
 import logging
 import warnings
+from datetime import datetime
 from pathlib import Path
 from warnings import simplefilter
 
@@ -20,8 +21,13 @@ simplefilter(action="ignore", category=FutureWarning)
 
 class THSApi:
     def __init__(self, output, trade_date):
-        self.dt = trade_date
-        trade_date = trade_date.strftime("%Y-%m-%d")
+        if isinstance(trade_date, int):
+            trade_date = str(trade_date)
+        if isinstance(trade_date, str):
+            self.dt = datetime.strptime(trade_date, "%Y%m%d")
+        else:
+            self.dt = trade_date
+            trade_date = trade_date.strftime("%Y%m%d")
         self.trade_date = trade_date
         self.output = Path(output, "ths")
         self.hot_stocks_addition_path = Path(

@@ -1,11 +1,13 @@
-astock_output: "D:/finance_datasource/datasource/AStock"
-future_output: "D:/finance_datasource/datasource/CTPFuture"
+raw_astock_output: "finance_datasource/datasource/AStock"
+raw_future_output: "finance_datasource/datasource/CTPFuture"
+astock_output: "finance_datasource/AStock"
+future_output: "finance_datasource/CTPFuture"
 tushare_token: ""
 tq_username: ""
 tq_psw: ""
 
 ctp_accounts:
-  - uname: ""
+  - uname: "simnow"
     uid: ""
     UserID: ""
     BrokerID: ""

@@ -1,11 +1,12 @@
 import logging
+import pathlib
 
+import numpy as np
 import pandas as pd
-from quantdata import get_data_df
+from quantcalendar import pydt_from_second
 
 from quantdatasource.api.tushare import TushareApi
-from quantdatasource.dbimport import mongodb
-from quantdatasource.jobs import account
+from quantdatasource.jobs import account, data_saver
 from quantdatasource.jobs.calendar import get_astock_calendar
 from quantdatasource.jobs.scheduler import job
 
@@ -49,7 +50,7 @@ def _finance_diff(data1, data2):
 
 
 def _mongo_import_finance_data(row, symbol, tablename):
-    conn = mongodb.get_conn_mongodb()
+    conn = data_saver.get_conn_mongodb()
     table = conn["finance"][tablename]
     end_date = row["end_date"]
     update_result = table.update_one(
@@ -107,17 +108,16 @@ def _mongo_import_finance_data(row, symbol, tablename):
 
 
 @job(
-    service_type="datasource-astock-daily",
     trigger="cron",
     id="astock_tushare",
     name="[TushareApi]其他",
     replace_existing=True,
-    hour=20,
+    hour=23,
     minute=30,
     misfire_grace_time=200,
 )
 def tushare_misc_data(dt, is_collect, is_import):
-    api = TushareApi(account.tushare_token, account.astock_output, dt)
+    api = TushareApi(account.tushare_token, account.raw_astock_output, dt)
     if is_collect:
         api.addition_download_finance_data()
 
@@ -156,27 +156,22 @@ def tushare_misc_data(dt, is_collect, is_import):
         api.addition_download_lhb()
 
     if is_import:
-        from quantdatasource.dbimport import duckdb
-        from quantdatasource.dbimport.tushare import (
-            cb,
-            lhb,
-            stock,
-            stock_utils,
-            ths_index,
-        )
+        from quantdatasource.dbimport.tushare import (cb, lhb, stock,
+                                                      stock_utils, ths_index)
 
+        output_dir = pathlib.Path(account.astock_output)
         stock_basic_df = stock.read_basic(api.basic_stock_path)
-        mongodb.insert_many(stock_basic_df, "finance", "basic_info_stocks")
+        data_saver.mongo_insert_many(stock_basic_df, "finance", "basic_info_stocks")
 
         concepts_basic_df = ths_index.read_ths_concepts_basic(
             api.ths_index_a_concepts_path
         )
-        mongodb.insert_many(
+        data_saver.mongo_insert_many(
             concepts_basic_df,
             "finance",
             "basic_info_ths_concepts",
         )
-        conn = mongodb.get_conn_mongodb()
+        conn = data_saver.get_conn_mongodb()
         all_ths_index_df = pd.DataFrame(conn["finance"]["constituent_ths_index"].find())
         addition_constituent_rows = ths_index.addition_read_ths_concepts_constituent(
             dt, all_ths_index_df, api.ths_concepts_members_path
@@ -188,44 +183,53 @@ def tushare_misc_data(dt, is_collect, is_import):
         else:
             logging.info("同花顺概念股成分没有增量改变")
 
-        duckdb.insert_multi_tables(
-            ths_index.addition_read_concepts_bars(
-                api.ths_daily_bars_addition_path, concepts_basic_df
-            ),
-            "bars_ths_index_daily",
+        ths_index_daily_out = output_dir / "bars_ths_index_daily"
+        ths_index_daily_out.mkdir(parents=True, exist_ok=True)
+        ths_index_df = ths_index.addition_read_concepts_bars(
+            api.ths_daily_bars_addition_path, concepts_basic_df
         )
+        ths_index_file_path = ths_index_daily_out / f"{dt.date().isoformat()}.parquet"
+        ths_index_df.to_parquet(ths_index_file_path, index=False)
+        logging.info(f"写入[{ths_index_file_path}]")
 
         chinese_names = dict(zip(stock_basic_df["symbol"], stock_basic_df["name"]))
-        daily_bars, dr_symbols, market_stats = stock.addition_read_stock_daily_bars(
+        daily_bars = stock.addition_read_stock_daily_bars(
             dt,
             api.daily_bars_addition_path,
             api.daily_basic_addition_path,
             api.moneyflow_addition_path,
             chinese_names,
-            conn["finance"],
         )
-        all_symbols = daily_bars["tablename"].to_list()
-        duckdb.insert_multi_tables(daily_bars, "bars_stock_daily")
+        stock_daily_out = output_dir / "daily_factors"
+        stock_daily_out.mkdir(parents=True, exist_ok=True)
+        stock_daily_file_path = stock_daily_out / f"{dt.date().isoformat()}.parquet"
+        daily_bars.to_parquet(stock_daily_file_path)
+        logging.info(f"写入[{stock_daily_file_path}]")
 
-        adjust_factors_collection = conn["finance"]["adjust_factors"]
-        for symbol in dr_symbols:
-            close_df = get_data_df(
-                "bars_stock_daily",
-                duckdb.get_tbname("_" + symbol),
-                fields=["dt", "_close", "preclose"],
-            )
-            adj_df = stock_utils.cal_adjust_factors(symbol, close_df)
-            adjust_factors_collection.delete_many({"symbol": symbol})
-            adjust_factors_collection.insert_many(adj_df.to_dict(orient="records"))
-        market_stats_collection = conn["finance"]["market_stats"]
-        market_stats_collection.insert_one(market_stats)
-        logging.info(f"写入MongoDB[finance][market_stats]")
-        stock_utils.calc_bars_stock_week_and_month_and_import_to_duckdb(
-            adjust_factors_collection, all_symbols, dr_symbols
+        yesterday = pydt_from_second(calendar.get_tradedays_lte(dt, 2)[0])
+        yesterday_daily_bars = pd.read_parquet(
+            stock_daily_out / f"{yesterday.date().isoformat()}.parquet"
         )
+        adjust_factors_collection = conn["finance"]["adjust_factors"]
+        adj_factors = stock_utils.cal_adjust_factors(daily_bars, yesterday_daily_bars)
+        for symbol, adj in adj_factors.items():
+            lst = []
+            docs = list(adjust_factors_collection.find({"symbol": symbol}, projection={"_id": False}))
+            last_adj_date =docs[-1]["tradedate"]
+            if last_adj_date >= dt:
+                logging.warning(f"复权因子已经写入 {symbol}, last tradedate {last_adj_date}")
+                continue
+            for one in docs:
+                one["adjust_factor"] *= adj
+                lst.append(one)
+            lst.append({"symbol": symbol, "adjust_factor": np.float32(1.0), "tradedate": dt})
+            adjust_factors_collection.delete_many({"symbol": symbol})
+            adjust_factors_collection.insert_many(lst)
 
         lhb_collection = conn["finance"]["lhb"]
-        lhb_data = lhb.addition_read_lhb(api.lhb_addition_path, api.lhb_inst_addition_path)
+        lhb_data = lhb.addition_read_lhb(
+            api.lhb_addition_path, api.lhb_inst_addition_path
+        )
         if lhb_data:
             lhb_collection.insert_many(lhb_data)
             logging.info(f"写入MongoDB[finance][lhb]")
@@ -233,52 +237,9 @@ def tushare_misc_data(dt, is_collect, is_import):
             logging.error(f"写入MongoDB[finance][lhb]为空")
 
         cb_basic_df = cb.read_basic(api.basic_cb_path)
-        mongodb.insert_many(
+        data_saver.mongo_insert_many(
             cb_basic_df,
             "finance",
             "basic_info_cbs",
             ignore_nan=True,
         )
-
-
-@job(
-    service_type="datasource-astock-daily",
-    id="astock_tushare_daily_fillup",
-    name="[TushareApi]补全历史A股日线[Only Import](未测试)",
-)
-def tushare_daily_bars(dt, is_collect, is_import):
-    api = TushareApi(account.tushare_token, account.astock_output, dt)
-
-    from quantdatasource.dbimport import duckdb
-    from quantdatasource.dbimport.tushare import stock, stock_utils
-
-    stock_basic_df = stock.read_basic(api.basic_stock_path)
-    conn = mongodb.get_conn_mongodb()
-    # 如果要补充历史某天的数据，调用如下函数，所有股的前复权价格都要重算
-    chinese_names = dict(zip(stock_basic_df["symbol"], stock_basic_df["name"]))
-    daily_bars, dr_symbols, market_stats = stock.addition_read_stock_daily_bars(
-        dt,
-        api.daily_bars_addition_path,
-        api.daily_basic_addition_path,
-        api.moneyflow_addition_path,
-        chinese_names,
-        conn["finance"],
-    )
-    duckdb.insert_multi_tables(daily_bars, "bars_stock_daily")
-    logging.info(f"  股票详情日线导入完成")
-
-    adjust_factors_collection = conn["finance"]["adjust_factors"]
-    for symbol in stock_utils.get_all_symbols():
-        close_df = get_data_df(
-            "bars_stock_daily",
-            duckdb.get_tbname("_" + symbol),
-            fields=["dt", "_close", "preclose"],
-        )
-        adj_df = stock_utils.cal_adjust_factors(symbol, close_df)
-        adjust_factors_collection.delete_many({"symbol": symbol})
-        adjust_factors_collection.insert_many(adj_df.to_dict(orient="records"))
-
-    all_symbols = daily_bars["tablename"].to_list()
-    stock_utils.calc_all_bars_stock_week_and_month_and_import_to_duckdb(
-        adjust_factors_collection, all_symbols
-    )

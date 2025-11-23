@@ -1,23 +1,21 @@
 from contextlib import closing
 
-from quantdatasource.dbimport import mongodb
-from quantdatasource.jobs import account
+from quantdatasource.jobs import account, data_saver
 from quantdatasource.jobs.calendar import get_ctpfuture_calendar
 from quantdatasource.jobs.scheduler import job
 
 __all__ = ["ctp_download_contracts"]
 
 
-def _download_subprocess(config):
+def _download_subprocess(ctp_acc):
     from quantdatasource.api.ctp import SimpleCtpApi
 
-    api = SimpleCtpApi(config, account.future_output)
+    api = SimpleCtpApi(ctp_acc, account.raw_future_output)
     with closing(api):
         api.full_download_contracts()
 
 
 @job(
-    service_type="datasource-mongo",
     # trigger="cron", # 速度太慢了，暂时关闭
     id="future_ctp_contracts",
     name="[CTP]更新期货合约手续费和保证金",
@@ -47,8 +45,8 @@ def ctp_download_contracts(dt, is_collect, is_import):
 
         for acc in account.ctp_accounts:
             filename = f"contracts_{acc['BrokerID']}"
-            mongodb.insert_many(
-                contracts.read_contracts(Path(account.future_output, f"{filename}.json")),
+            data_saver.mongo_insert_many(
+                contracts.read_contracts(Path(account.raw_future_output, f"{filename}.json")),
                 "finance_ctpfuture",
                 filename,
             )

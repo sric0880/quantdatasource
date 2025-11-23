@@ -71,27 +71,39 @@ def addition_read_cb_daily(dt, cb_daily_addition_path, basic_cb_path):
     basic_df = read_basic(basic_cb_path)
     logging.info(f"增量读取可转债日线 {tradedt}")
     df: pd.DataFrame = pd.read_csv(cb_daily_addition_path, index_col=0)
-    df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
+    df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d").astype("datetime64[ms]")
     df = df.reset_index(drop=True)
     df = df.rename(
         columns={
             "trade_date": "dt",
             "vol": "volume",
-            "ts_code": "tablename",
+            "ts_code": "symbol",
             "pre_close": "preclose",
         }
     )
     dtypes = {
-        "volume": "int32",
-        "amount": "int64",
+        "symbol": "str",
+        "open": "float32",
+        "high": "float32",
+        "low": "float32",
+        "close": "float32",
+        "volume": "uint32",
+        "amount": "uint64",
+        "preclose": "float32",
+        "change": "float32",
+        "pct_chg": "float32",
+        "cb_value": "float32",
+        "cb_over_rate": "float32",
+        "bond_over_rate": "float32",
+        "bond_value": "float32",
     }
     df = df.astype(dtypes)
     df = df.fillna(0)
     # tags_lst = list(zip(df['ts_code'], periodname))
-    df = df.loc[df["tablename"].isin(basic_df["ts_code"])]
+    df = df.loc[df["symbol"].isin(basic_df["ts_code"])]
     df = df[
         [
-            "tablename",
+            "symbol",
             "dt",
             "open",
             "high",
@@ -112,12 +124,15 @@ def addition_read_cb_daily(dt, cb_daily_addition_path, basic_cb_path):
 
 
 def read_cb_call(symbol, cb_call_path):
+    fields = ["dt", "call_price", "call_price_tax", "is_call", "call_type"]
     cb_call_csv = Path(cb_call_path, f"{symbol}.csv")
+    if not cb_call_csv.exists():
+        logging.error(f"可转债赎回数据 {cb_call_csv} not found")
+        return pd.DataFrame(columns=fields)
     df = pd.read_csv(cb_call_csv)
     if df.empty:
-        logging.warning(f"读取可转债赎回数据 {symbol} 为空")
-        return None
-    logging.info(f"读取可转债赎回数据 {symbol}")
+        # logging.warning(f"读取可转债赎回数据 {symbol} 为空")
+        return pd.DataFrame(columns=fields)
     df["call_type"] = df["call_type"].map({"强赎": 2, "到赎": 1})
     df["is_call"] = df["is_call"].map(
         {
@@ -131,19 +146,19 @@ def read_cb_call(symbol, cb_call_path):
     df["ann_date"] = pd.to_datetime(df["ann_date"], format="%Y%m%d")
     df = df.iloc[::-1]
     df = df.rename(columns={"ann_date": "dt"})
-    df = df[["dt", "call_price", "call_price_tax", "is_call", "call_type"]]
+    df = df[fields]
     df = df.fillna(0)
     return df
 
 
 def read_cb_share(symbol_basic_info, cb_share_path):
     symbol = symbol_basic_info["ts_code"]
+    fields = ["dt", "convert_price", "remain_size"]
     if "list_date" not in symbol_basic_info:
         logging.warning(
             f"读取可转债转股数据 {symbol} 基本信息中无list_date，推测无日线行情"
         )
-        return None
-    logging.info(f"读取可转债转股数据 {symbol}")
+        return pd.DataFrame(columns=fields)
     first_conv_price = symbol_basic_info.get("first_conv_price", 0)
     list_date = pd.to_datetime(symbol_basic_info["list_date"], format="%Y%m%d")
     issue_size = symbol_basic_info["issue_size"]
@@ -160,7 +175,7 @@ def read_cb_share(symbol_basic_info, cb_share_path):
         df["publish_date"] = pd.to_datetime(df["publish_date"], format="%Y-%m-%d")
         df = df.iloc[::-1]
         df = df.rename(columns={"publish_date": "dt"})
-        df = df[["dt", "convert_price", "remain_size"]]
+        df = df[fields]
         df = pd.concat([first_day_df, df])
         df = df.drop_duplicates(subset=["dt"], keep="last")
     else:

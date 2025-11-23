@@ -20,12 +20,12 @@ def _insert_many_ignore_nan(coll, df):
     coll.insert_many(data)
 
 
-def delete_fields(coll, fields):
+def mongo_delete_fields(coll, fields):
     new_ = {"$unset": {field: "" for field in fields}}
     coll.update_many({}, new_, False)
 
 
-def insert_many(df, dbname, collection_name, ignore_nan=False, drop=True):
+def mongo_insert_many(df, dbname, collection_name, ignore_nan=False, drop=True):
     logging.info(f"写入MongoDB[{dbname}][{collection_name}]")
     conn = get_conn_mongodb()
     db = conn[dbname]

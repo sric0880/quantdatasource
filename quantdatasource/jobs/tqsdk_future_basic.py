@@ -1,7 +1,6 @@
 from contextlib import closing
 
-from quantdatasource.dbimport import mongodb
-from quantdatasource.jobs import account
+from quantdatasource.jobs import account, data_saver
 from quantdatasource.jobs.calendar import get_ctpfuture_calendar
 from quantdatasource.jobs.scheduler import job
 
@@ -9,7 +8,6 @@ __all__ = ["tqsdk_future_basic"]
 
 
 @job(
-    service_type="datasource-mongo",
     trigger="cron",
     id="future_tqsdk_future_basic",
     name="[TQSDKApi]更新期货basic数据",
@@ -24,7 +22,7 @@ def tqsdk_future_basic(dt, is_collect, is_import):
         return
     from quantdatasource.api.tqsdk import TQSDKApi
 
-    api = TQSDKApi(account.tq_username, account.tq_psw, account.future_output, dt)
+    api = TQSDKApi(account.tq_username, account.tq_psw, account.raw_future_output, dt)
     with closing(api):
         if is_collect:
             api.full_download_future_basic()
@@ -32,12 +30,12 @@ def tqsdk_future_basic(dt, is_collect, is_import):
     if is_import:
         from quantdatasource.dbimport.tqsdk import future_basic
 
-        mongodb.insert_many(
+        data_saver.mongo_insert_many(
             future_basic.read_future_basic(api.future_basic_path),
             "finance_ctpfuture",
             "basic_info_futures",
         )
-        mongodb.insert_many(
+        data_saver.mongo_insert_many(
             future_basic.read_future_products_basic(api.product_basic_path),
             "finance_ctpfuture",
             "basic_info_products",

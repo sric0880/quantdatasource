@@ -1,19 +1,11 @@
 # quantdatasource
 
-finance datasource downloader and importer.
-
-无严格测试，请谨慎使用
+定时下载数据和整理存入MongoDB和文件系统
 
 主要数据源：
 
-- [Tushare](https://tushare.pro/)
-- [TQSDK](https://github.com/shinnytech/tqsdk-python)
-
-导入数据库：
-
-- MongoDB
-- TDengine
-- DuckDB
+- 股票[Tushare](https://tushare.pro/)
+- 期货[TQSDK](https://github.com/shinnytech/tqsdk-python)
 
 ## Usage
 

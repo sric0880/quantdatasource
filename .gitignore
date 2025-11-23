@@ -173,5 +173,6 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 *.con
-datasource/
 .tmp/
+deprecated/
+.vscode/

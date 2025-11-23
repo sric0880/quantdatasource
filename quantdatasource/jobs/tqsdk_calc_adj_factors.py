@@ -1,6 +1,6 @@
 from contextlib import closing
 
-from quantdatasource.dbimport import mongodb
+from quantdatasource.jobs import data_saver
 from quantdatasource.jobs import account
 from quantdatasource.jobs.calendar import get_ctpfuture_calendar
 from quantdatasource.jobs.scheduler import job
@@ -9,14 +9,13 @@ __all__ = ["tqsdk_calc_adj_factors"]
 
 
 @job(
-    service_type="datasource-mongo",
     id="future_tqsdk_calc_adj_factors",
     name="[TQSDKApi]更新期货价差数据(未测试)",
 )
 def tqsdk_calc_adj_factors(dt, is_collect, is_import):
     from quantdatasource.api.tqsdk import TQSDKApi
 
-    api = TQSDKApi(account.tq_username, account.tq_psw, account.future_output, dt)
+    api = TQSDKApi(account.tq_username, account.tq_psw, account.raw_future_output, dt)
     with closing(api):
         if is_collect:
             api.full_download_future_cont_list()
@@ -27,13 +26,13 @@ def tqsdk_calc_adj_factors(dt, is_collect, is_import):
         from quantdatasource.dbimport.tqsdk import adjust_factors
 
         cal = get_ctpfuture_calendar()
-        mongodb.insert_many(
+        data_saver.mongo_insert_many(
             adjust_factors.read_adjust_factors(api.adjust_factors_filepath, cal),
             "finance_ctpfuture",
             "adjust_factors",
         )
 
-        coll = mongodb.get_conn_mongodb()["finance_ctpfuture"]["adjust_factors"]
+        coll = data_saver.get_conn_mongodb()["finance_ctpfuture"]["adjust_factors"]
 
         def move_adjust_factors(symbol, price_diff):
             # 由于某些品种调整之后，价格为负数，需要将价差因子整体往下平移。price_diff未负，表示向下平移，为正，表示向上平移

@@ -1,49 +1,10 @@
-duckdb-astock-cb:
-  read_only: false
-  uris:
-    - "D://bt_data/duckdb/finance_astock/bars_cb_daily.db"
-
-duckdb-astock-daily:
-  memory_limit: 15G
-  read_only: false
-  uris:
-    - "D://bt_data/duckdb/finance_astock/bars_stock.db"
-    - "D://bt_data/duckdb/finance_astock/bars_stock_daily.db"
-    - "D://bt_data/duckdb/finance_astock/bars_ths_index_daily.db"
-
-duckdb-astock-index:
-  read_only: false
-  uris:
-    - "D://bt_data/duckdb/finance_astock/bars_index.db"
-
-duckdb-ctp-ticks:
-  uris:
-    - "D://bt_data/duckdb/finance_ctpfuture/ticks.db"
-
 mongodb:
   host: "127.0.0.1"
   port: 27017
   user: "root"
   password: "admin"
 
-# tdengine:
-#   host: "127.0.0.1"
-#   port: 6030
-#   user: "root"
-#   password: "taosdata"
-#   dbname: "finance"
-#   timezone: "UTC"
-
 services:
   datasource-mongo:
     mongodb: mongodb
-  datasource-astock-cb:
-    mongodb: mongodb
-    duckdb: duckdb-astock-cb
-  datasource-astock-index:
-    mongodb: mongodb
-    duckdb: duckdb-astock-index
-  datasource-astock-daily:
-    mongodb: mongodb
-    duckdb: duckdb-astock-daily
 

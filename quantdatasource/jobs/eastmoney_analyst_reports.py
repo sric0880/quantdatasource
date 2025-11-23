@@ -1,6 +1,5 @@
 from quantdatasource.api.eastmoney import EastMoneyApi
-from quantdatasource.dbimport import mongodb
-from quantdatasource.jobs import account
+from quantdatasource.jobs import account, data_saver
 from quantdatasource.jobs.calendar import get_astock_calendar
 from quantdatasource.jobs.scheduler import job
 
@@ -9,7 +8,6 @@ __all__ = ["eastmoney_analyst_reports"]
 
 # 增量下载研报数据
 @job(
-    service_type="datasource-mongo",
     trigger="cron",
     id="astock_eastmoney_reports",
     name="[EastMoneyApi]更新研报",
@@ -20,7 +18,7 @@ __all__ = ["eastmoney_analyst_reports"]
     misfire_grace_time=1,
 )
 def eastmoney_analyst_reports(dt, is_collect, is_import):
-    api = EastMoneyApi(account.astock_output, dt)
+    api = EastMoneyApi(account.raw_astock_output, dt)
     if is_collect:
         api.addition_download_analyst_reports()
 
@@ -29,7 +27,7 @@ def eastmoney_analyst_reports(dt, is_collect, is_import):
 
         if api.analyst_reports_addition_path.exists():
             cal = get_astock_calendar()
-            mongodb.insert_many(
+            data_saver.mongo_insert_many(
                 analyst_reports.addition_read_analyst_reports(
                     api.analyst_reports_addition_path, cal
                 ),

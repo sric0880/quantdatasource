@@ -110,3 +110,31 @@ def addition_read_finance_data(dt, addition_finance_path):
             # print(symbol)
             # print(row_dict)
             yield row_dict, symbol
+
+
+if __name__ == "__main__":
+    import quantdata as qd
+    import quantdatasource.jobs.data_saver as ds
+    qd.mongo_connect("127.0.0.1", user="root", password="admin")
+    logging.basicConfig(level=logging.INFO)
+    db = qd.get_conn_mongodb()
+    finance_balancesheet = db["finance"]["finance_balancesheet"]
+    finance_cashflow = db["finance"]["finance_cashflow"]
+    finance_cashflow_q = db["finance"]["finance_cashflow_q"]
+    finance_income = db["finance"]["finance_income"]
+    finance_income_q = db["finance"]["finance_income_q"]
+    for df, df_q, symbol in read_finance_data(Path("datas/tushare/balancesheet"), "balancesheet"):
+        if df is not None:
+            ds._insert_many_ignore_nan(finance_balancesheet, df)
+
+    for df, df_q, symbol in read_finance_data(Path("datas/tushare/cashflow"), "cashflow"):
+        if df is not None:
+            ds._insert_many_ignore_nan(finance_cashflow, df)
+        if df_q is not None:
+            ds._insert_many_ignore_nan(finance_cashflow_q, df_q)
+
+    for df, df_q, symbol in read_finance_data(Path("datas/tushare/income"), "income"):
+        if df is not None:
+            ds._insert_many_ignore_nan(finance_income, df)
+        if df_q is not None:
+            ds._insert_many_ignore_nan(finance_income_q, df_q)
