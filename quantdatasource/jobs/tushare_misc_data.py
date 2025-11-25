@@ -1,9 +1,7 @@
 import logging
 import pathlib
 
-import numpy as np
 import pandas as pd
-from quantcalendar import pydt_from_second
 
 from quantdatasource.api.tushare import TushareApi
 from quantdatasource.jobs import account, data_saver
@@ -156,8 +154,7 @@ def tushare_misc_data(dt, is_collect, is_import):
         api.addition_download_lhb()
 
     if is_import:
-        from quantdatasource.dbimport.tushare import (cb, lhb, stock,
-                                                      stock_utils, ths_index)
+        from quantdatasource.dbimport.tushare import cb, lhb, stock, ths_index
 
         output_dir = pathlib.Path(account.astock_output)
         stock_basic_df = stock.read_basic(api.basic_stock_path)
@@ -205,26 +202,6 @@ def tushare_misc_data(dt, is_collect, is_import):
         stock_daily_file_path = stock_daily_out / f"{dt.date().isoformat()}.parquet"
         daily_bars.to_parquet(stock_daily_file_path)
         logging.info(f"写入[{stock_daily_file_path}]")
-
-        yesterday = pydt_from_second(calendar.get_tradedays_lte(dt, 2)[0])
-        yesterday_daily_bars = pd.read_parquet(
-            stock_daily_out / f"{yesterday.date().isoformat()}.parquet"
-        )
-        adjust_factors_collection = conn["finance"]["adjust_factors"]
-        adj_factors = stock_utils.cal_adjust_factors(daily_bars, yesterday_daily_bars)
-        for symbol, adj in adj_factors.items():
-            lst = []
-            docs = list(adjust_factors_collection.find({"symbol": symbol}, projection={"_id": False}))
-            last_adj_date =docs[-1]["tradedate"]
-            if last_adj_date >= dt:
-                logging.warning(f"复权因子已经写入 {symbol}, last tradedate {last_adj_date}")
-                continue
-            for one in docs:
-                one["adjust_factor"] *= adj
-                lst.append(one)
-            lst.append({"symbol": symbol, "adjust_factor": np.float32(1.0), "tradedate": dt})
-            adjust_factors_collection.delete_many({"symbol": symbol})
-            adjust_factors_collection.insert_many(lst)
 
         lhb_collection = conn["finance"]["lhb"]
         lhb_data = lhb.addition_read_lhb(

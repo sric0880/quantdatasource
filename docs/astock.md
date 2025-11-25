@@ -55,14 +55,6 @@
 
 数据来源[申万官网](https://www.swsresearch.com/institute_sw/allIndex/downloadCenter/industryType)：[StockClassifyUse_stock.xls](https://www.swsresearch.com/swindex/pdf/SwClass2021/StockClassifyUse_stock.xls)
 
-### 5. adjust_factors 复权因子
-
-|字段名|说明|
-|--|--|
-|symbol|股票代码|
-|tradedate|交易日期|
-|adjust_factor|复权因子(前复权)|
-
 ### 6. analyst_reports A股研报数据(来源：东方财富网)
 
 |字段名|说明|类型|

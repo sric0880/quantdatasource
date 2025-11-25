@@ -69,23 +69,6 @@ def maxupordown_status(symbol, price, kline):
     return (upper_diff + lower_diff) * yiziban
 
 
-def cal_adjust_factors(daily_bars, yesterday_daily_bars):
-    # 重新计算复权因子
-    # 计算复权因子(前复权)
-    ret = {}
-    df = pd.concat([yesterday_daily_bars, daily_bars])
-    for symbol, sd in df.groupby(by="symbol"):
-        if len(sd) < 2:
-            continue
-        adj_preclose = sd["preclose"].iloc[1]
-        preclose = sd["close"].iloc[0]
-        if not math.isclose(adj_preclose, preclose, abs_tol=0.001):
-            adj = adj_preclose / preclose
-            logging.info(f"计算 {symbol} 前复权因子 {adj}")
-            ret[symbol] = adj
-    return ret
-
-
 # def calc_market_stats(stock_basic_df):
 #     #  统计全市场指标
 #     all_market_maxupordown = defaultdict(list)
