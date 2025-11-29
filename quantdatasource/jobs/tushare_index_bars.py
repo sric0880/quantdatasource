@@ -59,9 +59,9 @@ def tushare_index_bars(dt, is_collect, is_import):
     if is_import:
         from quantdatasource.dbimport.tushare import index
 
-        daily = index.addition_read_index(api.index_daily_addition_path, "1D")
-        weekly = index.addition_read_index(api.index_week_addition_path, "w")
-        monthly = index.addition_read_index(api.index_month_addition_path, "mon")
+        daily = index.addition_read_index(api.index_daily_addition_path)
+        weekly = index.addition_read_index(api.index_week_addition_path)
+        monthly = index.addition_read_index(api.index_month_addition_path)
         output_dir = pathlib.Path(account.astock_output).joinpath("bars_index")
         if daily is not None:
             d_path = output_dir / "daily"

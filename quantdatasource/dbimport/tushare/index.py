@@ -4,7 +4,7 @@ import logging
 import pandas as pd
 
 
-def addition_read_index(filepath, periodname):
+def addition_read_index(filepath):
     if not filepath.exists():
         logging.info(f"读取大盘指数 没有 {filepath}")
         return None
