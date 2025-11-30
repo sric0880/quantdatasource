@@ -40,9 +40,8 @@ def addition_read_stock_daily_bars(
         if row.open == 0 or row.high == 0 or row.low == 0 or row.close == 0:
             logging.warning(f"可能是新股：{symbol} ohlc==0")
             continue
-        # if symbol != '001366.SZ':
-        #     continue
-        pe_ttm = row.pe_ttm
+        # tushare的pe_ttm有空值，如果亏损的话
+        # pe_ttm = row.pe_ttm
         mkt_cap = row.total_mv * 10000
         if np.isnan(mkt_cap) or mkt_cap == 0:
             logging.error(f"{symbol} stock_daily.csv 下载中的市值数据为空，跳过")
@@ -64,7 +63,6 @@ def addition_read_stock_daily_bars(
             "preclose": row.pre_close,
             "volume": row.vol * 100,
             "amount": row.amount * 1000,
-            "pe_ttm": pe_ttm,
             "pb": row.pb,
             "mkt_cap": mkt_cap,
             "mkt_cap_ashare": row.circ_mv * 10000,
@@ -140,7 +138,6 @@ def addition_read_stock_daily_bars(
             "volume": "uint32",
             "amount": "uint64",
             "preclose": "float32",
-            "pe_ttm": "float32",
             "pb": "float32",
             "mkt_cap": "float64",
             "mkt_cap_ashare": "float64",
