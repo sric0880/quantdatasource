@@ -262,7 +262,7 @@ class TushareApi:
             df.to_csv(path)
             # print(f"{symbol}下载完成")
             eclipse = time() - t
-            wait_t = 0.31 - eclipse
+            wait_t = 0.61 - eclipse
             if wait_t > 0:
                 sleep(wait_t)
 
