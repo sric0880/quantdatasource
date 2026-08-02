@@ -79,11 +79,22 @@ def addition_read_stock_daily_bars(
             "total_shares": row.total_share * 10000,
             "maxupordown": 0,
         }
-        maxupordown = row.limit_status
+        # 从2026年6月16号开始，limit_status有变
+        # 收盘涨跌状态：0-平盘，1-上涨(不含涨停)，2-涨停(不含一字涨停)，3-一字涨停，4-下跌(不含跌停)，5-跌停(不含一字跌停)，6-一字跌停
+        if row.limit_status in [0, 1, 4]:
+            maxupordown = 0
+        elif row.limit_status == 2:
+            maxupordown = 1
+        elif row.limit_status == 3:
+            maxupordown = 2
+        elif row.limit_status == 5:
+            maxupordown = -1
+        elif row.limit_status == 6:
+            maxupordown = -2
         if pd.isna(maxupordown):
             maxupordown = maxupordown_status(symbol, row.close, new_kline)
-        if row.high == row.low:
-            maxupordown = 2 * maxupordown
+            if row.high == row.low:
+                maxupordown = 2 * maxupordown
         new_kline["maxupordown"] = maxupordown
         new_kline["vip_net_flow_in"] = (
             new_kline["vip_buy_amt"] - new_kline["vip_sell_amt"]
